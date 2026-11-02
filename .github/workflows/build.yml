@@ -14,11 +14,11 @@ jobs:
   macos:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: Swatinem/rust-cache@v2
       - name: Compiler l'application et le .dmg
         run: ./build-macos.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ScreenCapture-macOS
           path: dist/*.dmg
@@ -33,14 +33,14 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: Swatinem/rust-cache@v2
       - name: Installer Inno Setup
         run: choco install innosetup -y --no-progress
       - name: Compiler l'installeur
         shell: pwsh
         run: ./build-installer.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ScreenCapture-Windows
           path: dist/*.exe
