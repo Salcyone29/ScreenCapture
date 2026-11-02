@@ -12,7 +12,7 @@ use egui_material_icons::icons::*;
 use global_hotkey::hotkey::{Code, HotKey, Modifiers};
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 use image::RgbaImage;
-use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+use raw_window_handle::HasWindowHandle;
 use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
@@ -189,10 +189,7 @@ impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, settings: Settings, start_hidden: bool) -> Self {
         let ctx = cc.egui_ctx.clone();
         theme::install_fonts(&ctx);
-        let hwnd = match cc.window_handle().map(|h| h.as_raw()) {
-            Ok(RawWindowHandle::Win32(h)) => h.hwnd.get(),
-            _ => 0,
-        };
+        let hwnd = cc.window_handle().map(|h| platform::native_handle(h.as_raw())).unwrap_or(0);
         let (tx, rx) = channel();
 
         // Raccourcis globaux.
@@ -368,7 +365,7 @@ impl App {
             self.mode = if self.editor.is_some() { Mode::Editor } else { Mode::Workspace };
         }
         // Capture de fenêtre par raccourci : fenêtre au premier plan (si ce n'est pas la nôtre).
-        let target = if kind == CaptureKind::Window && from_hotkey && !(self.visible && platform_is_foreground(self.win)) {
+        let target = if kind == CaptureKind::Window && from_hotkey && !(self.visible && platform::is_foreground(self.win)) {
             capture::foreground_window_rect()
         } else {
             None
@@ -423,7 +420,7 @@ impl App {
     }
 
     fn show_capture_popup(&mut self, ctx: &egui::Context, image: RgbaImage, path: Option<PathBuf>) {
-        let ppp = ctx.pixels_per_point();
+        let ppp = platform::units_per_point(ctx);
         let (cx, cy) = capture::cursor_pos();
         let wa = capture::work_area_at(cx, cy);
         let (w, h) = ((336.0 * ppp) as i32, (282.0 * ppp) as i32);
@@ -500,7 +497,7 @@ impl App {
                         ui.label(egui::RichText::new(format!("{} × {} px", size.0, size.1)).size(11.5).color(p.on_surface_variant));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        reveal = theme::icon_button(ui, ICON_FOLDER_OPEN, false, "Afficher dans l'Explorateur").clicked();
+                        reveal = theme::icon_button(ui, ICON_FOLDER_OPEN, false, &format!("Afficher dans {}", platform::FILE_MANAGER)).clicked();
                         copy = theme::icon_button(ui, ICON_CONTENT_COPY, false, "Copier").clicked();
                     });
                 });
@@ -698,7 +695,7 @@ impl App {
                 if let Some(w) = &rec.warning {
                     self.toast(w.clone());
                 }
-                let ppp = ctx.pixels_per_point();
+                let ppp = platform::units_per_point(ctx);
                 let (w, h) = ((360.0 * ppp) as i32, (60.0 * ppp) as i32);
                 let mon = capture::monitor_at(region.x + region.w / 2, region.y + region.h / 2);
                 let x = (region.x + region.w / 2 - w / 2).clamp(mon.x, mon.x + mon.w - w);
@@ -954,7 +951,12 @@ impl App {
             ui.add_space(12.0);
 
             theme::card(ui, "Raccourcis clavier globaux", ICON_KEYBOARD, |ui| {
-                ui.label(egui::RichText::new("Exemples : PrintScreen, ctrl+PrintScreen, ctrl+shift+KeyS, alt+F9. Laisser vide pour désactiver.").size(12.5).color(p.on_surface_variant));
+                let examples = if cfg!(target_os = "macos") {
+                    "Exemples : super+shift+Digit2 (⌘⇧2), ctrl+alt+KeyS, F13. Laisser vide pour désactiver."
+                } else {
+                    "Exemples : PrintScreen, ctrl+PrintScreen, ctrl+shift+KeyS, alt+F9. Laisser vide pour désactiver."
+                };
+                ui.label(egui::RichText::new(examples).size(12.5).color(p.on_surface_variant));
                 ui.add_space(6.0);
                 let status = self.hotkeys.status.clone();
                 let ok = |k: CaptureKind| status.iter().find(|(c, _)| *c == k).map(|(_, o)| *o).unwrap_or(false);
@@ -985,6 +987,7 @@ impl App {
                         theme::text_field(ui, field, 190.0, "");
                     });
                 }
+                #[cfg(windows)]
                 theme::setting_row(
                     ui,
                     "Remplacer Win + Maj + S",
@@ -1008,7 +1011,12 @@ impl App {
                         self.hotkey_edit = crate::settings::Hotkeys::default();
                     }
                 });
-                ui.label(egui::RichText::new("Astuce : si Impr. écran ouvre l'Outil Capture de Windows, désactivez « Utiliser la touche Impr. écran pour ouvrir la capture d'écran » dans Paramètres Windows > Accessibilité > Clavier.").size(12.0).color(p.on_surface_variant));
+                let tip = if cfg!(target_os = "macos") {
+                    "Astuce : ⌘⇧3, ⌘⇧4 et ⌘⇧5 sont réservés par macOS (Réglages Système > Clavier > Raccourcis clavier > Captures d'écran)."
+                } else {
+                    "Astuce : si Impr. écran ouvre l'Outil Capture de Windows, désactivez « Utiliser la touche Impr. écran pour ouvrir la capture d'écran » dans Paramètres Windows > Accessibilité > Clavier."
+                };
+                ui.label(egui::RichText::new(tip).size(12.0).color(p.on_surface_variant));
             });
             ui.add_space(12.0);
 
@@ -1016,11 +1024,15 @@ impl App {
                 let found = recorder::find_ffmpeg(&self.settings);
                 let desc = match &found {
                     Some(f) => format!("Utilisé : {}", f.display()),
-                    None => "Introuvable — installez FFmpeg (winget install ffmpeg) ou indiquez ffmpeg.exe".to_string(),
+                    None => format!("Introuvable — installez FFmpeg ({}) ou indiquez son emplacement", recorder::FFMPEG_HINT),
                 };
                 theme::setting_row(ui, "FFmpeg", &desc, |ui| {
                     if theme::button(ui, ButtonKind::Tonal, Some(ICON_FOLDER_OPEN), "Choisir").clicked() {
-                        if let Some(f) = rfd::FileDialog::new().add_filter("ffmpeg", &["exe"]).pick_file() {
+                        if let Some(f) = {
+                            let d = rfd::FileDialog::new();
+                            if cfg!(windows) { d.add_filter("ffmpeg", &["exe"]) } else { d }
+                        }
+                        .pick_file() {
                             self.settings.ffmpeg_path = f.display().to_string();
                             changed = true;
                         }
@@ -1492,11 +1504,6 @@ impl eframe::App for App {
     }
 }
 
-fn platform_is_foreground(win: Window) -> bool {
-    use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
-    unsafe { GetForegroundWindow().0 as isize == win.0 }
-}
-
 fn build_tray(ids: &mut HashMap<String, &'static str>, settings: &Settings) -> anyhow::Result<TrayIcon> {
     let menu = Menu::new();
     let hk = &settings.hotkeys;
@@ -1528,8 +1535,9 @@ fn build_tray(ids: &mut HashMap<String, &'static str>, settings: &Settings) -> a
     let icon = tray_icon::Icon::from_rgba(rgba, 32, 32)?;
     Ok(TrayIconBuilder::new()
         .with_menu(Box::new(menu))
-        .with_menu_on_left_click(false)
-        .with_tooltip("ScreenCapture — Impr. écran pour capturer")
+        // Sur Mac, un clic sur l'icône de la barre des menus ouvre le menu, comme partout ailleurs.
+        .with_menu_on_left_click(cfg!(target_os = "macos"))
+        .with_tooltip(format!("ScreenCapture — {} pour capturer", pretty_hotkey(&settings.hotkeys.region)))
         .with_icon(icon)
         .build()?)
 }

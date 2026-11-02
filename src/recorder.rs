@@ -1,4 +1,5 @@
-//! Enregistrement vidéo de l'écran via FFmpeg (gdigrab + micro DirectShow optionnel).
+//! Enregistrement vidéo de l'écran via FFmpeg : gdigrab + micro DirectShow sous Windows,
+//! avfoundation (écran et micro) sous macOS.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -9,7 +10,18 @@ use crate::capture::Rect;
 use crate::platform::hidden_command;
 use crate::settings::{Settings, VideoFormat};
 
-/// Recherche ffmpeg.exe : chemin configuré, dossier de l'exécutable, PATH, puis installations connues.
+#[cfg(windows)]
+const FFMPEG: &str = "ffmpeg.exe";
+#[cfg(not(windows))]
+const FFMPEG: &str = "ffmpeg";
+
+/// Commande d'installation conseillée dans les messages.
+#[cfg(windows)]
+pub const FFMPEG_HINT: &str = "winget install ffmpeg";
+#[cfg(target_os = "macos")]
+pub const FFMPEG_HINT: &str = "brew install ffmpeg";
+
+/// Recherche FFmpeg : chemin configuré, dossier de l'exécutable, PATH, puis installations connues.
 pub fn find_ffmpeg(settings: &Settings) -> Option<PathBuf> {
     let configured = settings.ffmpeg_path.trim();
     if !configured.is_empty() && Path::new(configured).is_file() {
@@ -17,7 +29,7 @@ pub fn find_ffmpeg(settings: &Settings) -> Option<PathBuf> {
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            for c in [dir.join("ffmpeg.exe"), dir.join("ffmpeg").join("ffmpeg.exe")] {
+            for c in [dir.join(FFMPEG), dir.join("ffmpeg").join(FFMPEG)] {
                 if c.is_file() {
                     return Some(c);
                 }
@@ -26,12 +38,26 @@ pub fn find_ffmpeg(settings: &Settings) -> Option<PathBuf> {
     }
     if let Some(paths) = std::env::var_os("PATH") {
         for d in std::env::split_paths(&paths) {
-            let c = d.join("ffmpeg.exe");
+            let c = d.join(FFMPEG);
             if c.is_file() {
                 return Some(c);
             }
         }
     }
+    known_ffmpeg()
+}
+
+/// Une application lancée depuis le Finder n'hérite pas du PATH du terminal : Homebrew et MacPorts.
+#[cfg(target_os = "macos")]
+fn known_ffmpeg() -> Option<PathBuf> {
+    ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/opt/local/bin/ffmpeg"]
+        .into_iter()
+        .map(PathBuf::from)
+        .find(|p| p.is_file())
+}
+
+#[cfg(windows)]
+fn known_ffmpeg() -> Option<PathBuf> {
     let local = std::env::var("LOCALAPPDATA").unwrap_or_default();
     // Paquets winget (Gyan.FFmpeg, BtbN…) : le PATH du processus peut précéder l'installation.
     if let Ok(rd) = std::fs::read_dir(format!("{local}\\Microsoft\\WinGet\\Packages")) {
@@ -55,6 +81,7 @@ pub fn find_ffmpeg(settings: &Settings) -> Option<PathBuf> {
 }
 
 /// Micros actifs (branchés et activés) selon Windows (Core Audio), sans passer par FFmpeg.
+#[cfg(windows)]
 pub fn list_microphones() -> Vec<String> {
     use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
     use windows::Win32::Media::Audio::{eCapture, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE};
@@ -78,7 +105,13 @@ pub fn list_microphones() -> Vec<String> {
     }
 }
 
-/// Nom DirectShow correspondant à un micro Windows (DirectShow tronque parfois les noms longs).
+/// Micros vus par FFmpeg (avfoundation), qui sert aussi à l'enregistrement.
+#[cfg(target_os = "macos")]
+pub fn list_microphones() -> Vec<String> {
+    find_ffmpeg(&Settings::load()).map(|f| list_audio_devices(&f)).unwrap_or_default()
+}
+
+/// Nom FFmpeg correspondant au micro choisi (DirectShow tronque parfois les noms longs).
 fn resolve_dshow_audio(ffmpeg: &Path, name: &str) -> Option<String> {
     let devices = list_audio_devices(ffmpeg);
     devices
@@ -89,6 +122,7 @@ fn resolve_dshow_audio(ffmpeg: &Path, name: &str) -> Option<String> {
 }
 
 /// Liste les périphériques audio DirectShow.
+#[cfg(windows)]
 pub fn list_audio_devices(ffmpeg: &Path) -> Vec<String> {
     let out = hidden_command(&ffmpeg.to_string_lossy())
         .args(["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"])
@@ -102,6 +136,26 @@ pub fn list_audio_devices(ffmpeg: &Path) -> Vec<String> {
             let s = l.find('"')?;
             let e = l[s + 1..].find('"')?;
             Some(l[s + 1..s + 1 + e].to_string())
+        })
+        .collect()
+}
+
+/// Liste les micros avfoundation : lignes « [n] Nom » après « AVFoundation audio devices: ».
+#[cfg(target_os = "macos")]
+pub fn list_audio_devices(ffmpeg: &Path) -> Vec<String> {
+    let out = hidden_command(&ffmpeg.to_string_lossy())
+        .args(["-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", ""])
+        .stdin(Stdio::null())
+        .output();
+    let Ok(out) = out else { return Vec::new() };
+    let text = String::from_utf8_lossy(&out.stderr);
+    text.lines()
+        .skip_while(|l| !l.contains("audio devices"))
+        .skip(1)
+        .filter_map(|l| {
+            let rest = l.split("] [").nth(1)?;
+            let (_, name) = rest.split_once("] ")?;
+            Some(name.trim().to_string())
         })
         .collect()
 }
@@ -121,7 +175,7 @@ pub struct Recorder {
 impl Recorder {
     pub fn start(settings: &Settings, region: Rect, output: PathBuf) -> anyhow::Result<Self> {
         let ffmpeg = find_ffmpeg(settings).ok_or_else(|| {
-            anyhow::anyhow!("FFmpeg introuvable. Installez-le (winget install ffmpeg) ou indiquez son chemin dans les paramètres.")
+            anyhow::anyhow!("FFmpeg introuvable. Installez-le ({FFMPEG_HINT}) ou indiquez son chemin dans les paramètres.")
         })?;
         // x264 / VP9 exigent des dimensions paires.
         let region = Rect::new(region.x, region.y, region.w & !1, region.h & !1);
@@ -131,13 +185,6 @@ impl Recorder {
 
         let mut cmd = hidden_command(&ffmpeg.to_string_lossy());
         cmd.args(["-hide_banner", "-loglevel", "error", "-y"]);
-        cmd.args(["-thread_queue_size", "512", "-f", "gdigrab", "-framerate", &fps]);
-        cmd.args(["-draw_mouse", if settings.video_cursor { "1" } else { "0" }]);
-        if settings.video_show_region {
-            cmd.args(["-show_region", "1"]);
-        }
-        cmd.args(["-offset_x", &region.x.to_string(), "-offset_y", &region.y.to_string()]);
-        cmd.args(["-video_size", &format!("{}x{}", region.w, region.h), "-i", "desktop"]);
         // Micro débranché ou introuvable : enregistrer sans le son plutôt qu'échouer.
         let mut warning = None;
         let audio = settings.audio_device.as_ref().filter(|_| settings.video_format != VideoFormat::Gif).and_then(|name| {
@@ -147,9 +194,7 @@ impl Recorder {
             }
             dev
         });
-        if let Some(dev) = &audio {
-            cmd.args(["-thread_queue_size", "512", "-f", "dshow", "-i", &format!("audio={dev}")]);
-        }
+        add_inputs(&mut cmd, settings, region, &fps, audio.as_deref())?;
         match settings.video_format {
             VideoFormat::Webm => {
                 cmd.args(["-c:v", "libvpx-vp9", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "0", "-crf", "34", "-pix_fmt", "yuv420p"]);
@@ -203,4 +248,41 @@ impl Recorder {
         let _ = self.child.wait();
         let _ = std::fs::remove_file(&self.temp);
     }
+}
+
+/// Entrées FFmpeg sous Windows : bureau (gdigrab) et micro DirectShow.
+#[cfg(windows)]
+fn add_inputs(cmd: &mut std::process::Command, settings: &Settings, region: Rect, fps: &str, audio: Option<&str>) -> anyhow::Result<()> {
+    cmd.args(["-thread_queue_size", "512", "-f", "gdigrab", "-framerate", fps]);
+    cmd.args(["-draw_mouse", if settings.video_cursor { "1" } else { "0" }]);
+    if settings.video_show_region {
+        cmd.args(["-show_region", "1"]);
+    }
+    cmd.args(["-offset_x", &region.x.to_string(), "-offset_y", &region.y.to_string()]);
+    cmd.args(["-video_size", &format!("{}x{}", region.w, region.h), "-i", "desktop"]);
+    if let Some(dev) = audio {
+        cmd.args(["-thread_queue_size", "512", "-f", "dshow", "-i", &format!("audio={dev}")]);
+    }
+    Ok(())
+}
+
+/// Entrée FFmpeg sous macOS : écran entier et micro (avfoundation), puis recadrage sur la zone.
+#[cfg(target_os = "macos")]
+fn add_inputs(cmd: &mut std::process::Command, settings: &Settings, region: Rect, fps: &str, audio: Option<&str>) -> anyhow::Result<()> {
+    use crate::capture::imp::{display_scale, displays, scale};
+    let (cx, cy) = (region.x + region.w / 2, region.y + region.h / 2);
+    let all = displays();
+    let index = all.iter().position(|(_, r)| r.contains(cx, cy)).unwrap_or(0);
+    let (display, screen) = all.get(index).copied().ok_or_else(|| anyhow::anyhow!("aucun écran"))?;
+    let region = region.intersect(&screen).ok_or_else(|| anyhow::anyhow!("zone hors de l'écran"))?;
+    // L'écran est capturé dans sa propre résolution, qui peut être inférieure à l'échelle commune.
+    let k = display_scale(display) / scale();
+    let px = |v: i32| ((v as f64 * k).round() as i32) & !1;
+    let crop = format!("crop={}:{}:{}:{}", px(region.w), px(region.h), px(region.x - screen.x), px(region.y - screen.y));
+    let filter = if k == 1.0 { crop } else { format!("{crop},scale={}:{}", region.w & !1, region.h & !1) };
+    cmd.args(["-thread_queue_size", "512", "-f", "avfoundation", "-framerate", fps]);
+    cmd.args(["-capture_cursor", if settings.video_cursor { "1" } else { "0" }]);
+    cmd.args(["-i", &format!("Capture screen {index}:{}", audio.unwrap_or("none"))]);
+    cmd.args(["-vf", &filter]);
+    Ok(())
 }

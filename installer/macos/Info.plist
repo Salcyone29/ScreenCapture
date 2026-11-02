@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>fr</string>
+	<key>CFBundleName</key>
+	<string>ScreenCapture</string>
+	<key>CFBundleDisplayName</key>
+	<string>ScreenCapture</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.github.salcyone29.screencapture</string>
+	<key>CFBundleExecutable</key>
+	<string>ScreenCapture</string>
+	<key>CFBundleIconFile</key>
+	<string>ScreenCapture</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Stéphane Salou</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ScreenCapture utilise le micro pour enregistrer le son de vos vidéos d’écran.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>ScreenCapture a besoin d’enregistrer l’écran pour faire des captures et des vidéos.</string>
+</dict>
+</plist>

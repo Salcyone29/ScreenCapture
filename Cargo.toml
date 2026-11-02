@@ -2,7 +2,7 @@
 name = "screencapture"
 version = "0.1.5"
 edition = "2021"
-description = "Outil de capture d'écran et d'annotation inspiré de Screenpresso, en Rust avec un design Material 3"
+description = "Outil de capture d'écran et d'annotation en Rust avec un design Material 3 (Windows et macOS)"
 
 [[bin]]
 name = "ScreenCapture"
@@ -25,7 +25,7 @@ dirs = "5"
 anyhow = "1"
 raw-window-handle = "0.6"
 
-[dependencies.windows]
+[target.'cfg(windows)'.dependencies.windows]
 version = "0.58"
 features = [
     "Foundation",
@@ -50,6 +50,15 @@ features = [
     "Win32_UI_Shell_PropertiesSystem",
     "Win32_UI_WindowsAndMessaging",
 ]
+
+# macOS : mêmes versions que winit / tray-icon pour éviter les doublons.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.23"
+core-foundation = "0.9"
+objc2 = "0.5"
+objc2-foundation = { version = "0.2", features = ["NSArray", "NSData", "NSDictionary", "NSError", "NSFileManager", "NSGeometry", "NSString", "NSURL", "NSValue"] }
+objc2-app-kit = { version = "0.2", features = ["NSApplication", "NSResponder", "NSRunningApplication", "NSScreen", "NSView", "NSWindow", "NSGraphics"] }
+objc2-vision = { version = "0.2", features = ["VNRequest", "VNRequestHandler", "VNRecognizeTextRequest", "VNObservation", "VNTypes"] }
 
 [build-dependencies]
 winresource = "0.1"

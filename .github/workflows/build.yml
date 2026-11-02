@@ -1,0 +1,54 @@
+# Compile l'installeur Windows et l'image disque macOS.
+# Lancement manuel (onglet Actions) ou à chaque tag vX.Y.Z, qui joint alors les fichiers à la Release.
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Compiler l'application et le .dmg
+        run: ./build-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenCapture-macOS
+          path: dist/*.dmg
+      - name: Joindre à la Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "ScreenCapture ${GITHUB_REF_NAME#v}" --notes "" || true
+          gh release upload "$GITHUB_REF_NAME" dist/*.dmg --clobber
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Installer Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Compiler l'installeur
+        shell: pwsh
+        run: ./build-installer.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenCapture-Windows
+          path: dist/*.exe
+      - name: Joindre à la Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "ScreenCapture ${GITHUB_REF_NAME#v}" --notes "" || true
+          gh release upload "$GITHUB_REF_NAME" dist/*.exe --clobber

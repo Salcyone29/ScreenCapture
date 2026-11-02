@@ -75,6 +75,20 @@ pub struct Hotkeys {
 }
 
 impl Default for Hotkeys {
+    /// Mac : pas de touche Impr. écran, et ⌘⇧3/4/5 sont pris par macOS.
+    #[cfg(target_os = "macos")]
+    fn default() -> Self {
+        Self {
+            region: "super+shift+Digit2".into(),
+            fullscreen: "super+shift+Digit1".into(),
+            window: "super+shift+Digit7".into(),
+            last_region: "super+shift+Digit8".into(),
+            video: "super+shift+Digit9".into(),
+            override_snip: false,
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
     fn default() -> Self {
         Self {
             region: "PrintScreen".into(),

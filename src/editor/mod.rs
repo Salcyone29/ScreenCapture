@@ -428,6 +428,7 @@ impl Editor {
             Tool::Select => "Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer",
             Tool::Arrow | Tool::Line => "Glisser pour tracer • Maj : angles de 45°",
             Tool::Rect | Tool::Ellipse => "Glisser pour tracer • Maj : forme régulière",
+            Tool::Text | Tool::Bubble if cfg!(target_os = "macos") => "Cliquer pour écrire • ⌘Entrée ou Échap pour valider",
             Tool::Text | Tool::Bubble => "Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider",
             Tool::Number => "Cliquer pour placer le numéro suivant",
             Tool::Stamp => "Cliquer pour apposer le tampon",
@@ -435,6 +436,7 @@ impl Editor {
             Tool::Crop => "Glisser pour définir la zone à conserver",
             Tool::Cut => "Glisser pour choisir la bande à retirer",
             Tool::MoveArea => "Glisser pour sélectionner une zone, puis la faire glisser • Suppr : la remettre en place",
+            _ if cfg!(target_os = "macos") => "Glisser pour tracer • Défiler : déplacer • ⌘+défiler ou pincer : zoom",
             _ => "Glisser pour tracer • Molette : défiler • Ctrl+molette : zoom",
         }
     }
@@ -547,12 +549,12 @@ impl Editor {
             ui.label(egui::RichText::new(title).font(theme::medium(18.0)).color(p.on_surface));
             ui.add_space(16.0);
             ui.add_enabled_ui(!self.undo.is_empty(), |ui| {
-                if theme::icon_button(ui, ICON_UNDO, false, "Annuler (Ctrl+Z)").clicked() {
+                if theme::icon_button(ui, ICON_UNDO, false, &crate::platform::sc("Annuler (Ctrl+Z)")).clicked() {
                     self.undo();
                 }
             });
             ui.add_enabled_ui(!self.redo.is_empty(), |ui| {
-                if theme::icon_button(ui, ICON_REDO, false, "Rétablir (Ctrl+Y)").clicked() {
+                if theme::icon_button(ui, ICON_REDO, false, &crate::platform::sc("Rétablir (Ctrl+Y)")).clicked() {
                     self.redo();
                 }
             });
@@ -561,7 +563,7 @@ impl Editor {
                 self.fit = false;
                 self.zoom = (self.zoom / 1.25).max(0.05);
             }
-            if theme::icon_button(ui, ICON_FIT_SCREEN, self.fit, "Ajuster à la fenêtre (Ctrl+0)").clicked() {
+            if theme::icon_button(ui, ICON_FIT_SCREEN, self.fit, &crate::platform::sc("Ajuster à la fenêtre (Ctrl+0)")).clicked() {
                 self.fit = true;
                 self.pan = Vec2::ZERO;
             }
@@ -584,13 +586,13 @@ impl Editor {
                 actions.push(EditorAction::Ocr);
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if theme::button(ui, ButtonKind::Filled, Some(ICON_SAVE), "Enregistrer").on_hover_text("Ctrl+S").clicked() {
+                if theme::button(ui, ButtonKind::Filled, Some(ICON_SAVE), "Enregistrer").on_hover_text(crate::platform::sc("Ctrl+S")).clicked() {
                     actions.push(EditorAction::Save);
                 }
-                if theme::icon_button(ui, ICON_SAVE_AS, false, "Enregistrer sous… (Ctrl+Maj+S)").clicked() {
+                if theme::icon_button(ui, ICON_SAVE_AS, false, &crate::platform::sc("Enregistrer sous… (Ctrl+Maj+S)")).clicked() {
                     actions.push(EditorAction::SaveAs);
                 }
-                if theme::button(ui, ButtonKind::Tonal, Some(ICON_CONTENT_COPY), "Copier").on_hover_text("Ctrl+C").clicked() {
+                if theme::button(ui, ButtonKind::Tonal, Some(ICON_CONTENT_COPY), "Copier").on_hover_text(crate::platform::sc("Ctrl+C")).clicked() {
                     actions.push(EditorAction::Copy);
                 }
             });

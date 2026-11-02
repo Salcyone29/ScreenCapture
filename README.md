@@ -25,4 +25,23 @@ cargo build --release          # target\release\ScreenCapture.exe
 
 ## macOS
 
-Version en cours de portage.
+Télécharger `ScreenCapture-x.y.z-macOS.dmg` dans les [Releases](../../releases) (binaire universel Apple Silicon et Intel, macOS 11 ou plus récent), puis glisser ScreenCapture dans Applications.
+
+- L'application n'est pas signée par un compte Apple Developer : au premier lancement, faire **clic droit → Ouvrir**, puis **Ouvrir**.
+- Autoriser ScreenCapture dans **Réglages Système → Confidentialité et sécurité → Enregistrement de l'écran** (et **Micro** pour le son des vidéos), puis relancer l'application.
+- Vidéo : installer FFmpeg avec `brew install ffmpeg`.
+- Raccourcis par défaut : ⌘⇧2 zone, ⌘⇧1 plein écran, ⌘⇧7 fenêtre, ⌘⇧8 dernière zone, ⌘⇧9 vidéo (⌘⇧3/4/5 restent ceux de macOS).
+- Une capture de zone porte sur l'écran où se trouve le pointeur.
+
+### Compiler
+
+Prérequis : [Rust](https://rustup.rs) et les outils de ligne de commande Xcode (`xcode-select --install`).
+
+```bash
+./build-macos.sh            # binaire universel → dist/ScreenCapture-x.y.z-macOS.dmg
+./build-macos.sh --native   # architecture du Mac uniquement, plus rapide
+```
+
+## Compilation automatique
+
+Le workflow GitHub Actions `Build` compile l'installeur Windows et le `.dmg` macOS : lancement manuel depuis l'onglet Actions, ou automatique à chaque tag `vX.Y.Z`, qui joint les fichiers à la Release.

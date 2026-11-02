@@ -196,7 +196,7 @@ impl Workspace {
                     if theme::icon_button(ui, ICON_IMAGE, false, "Ouvrir une image dans l'éditeur").clicked() {
                         actions.push(WsAction::OpenFile);
                     }
-                    if theme::icon_button(ui, ICON_CONTENT_PASTE, false, "Éditer l'image du presse-papiers (Ctrl+V)").clicked() {
+                    if theme::icon_button(ui, ICON_CONTENT_PASTE, false, &crate::platform::sc("Éditer l'image du presse-papiers (Ctrl+V)")).clicked() {
                         actions.push(WsAction::Paste);
                     }
                     if theme::icon_button(ui, ICON_REFRESH, false, "Actualiser").clicked() {
@@ -338,7 +338,7 @@ impl Workspace {
             let icons: [(&str, &str, u8); 4] = [
                 (if is_video { ICON_PLAY_ARROW } else { ICON_EDIT }, if is_video { "Lire" } else { "Éditer" }, 0),
                 (ICON_CONTENT_COPY, "Copier", 1),
-                (ICON_FOLDER_OPEN, "Afficher dans l'Explorateur", 2),
+                (ICON_FOLDER_OPEN, if cfg!(target_os = "macos") { "Afficher dans le Finder" } else { "Afficher dans l'Explorateur" }, 2),
                 (ICON_DELETE, "Supprimer", 3),
             ];
             for (k, (icon, tip, id)) in icons.iter().enumerate() {
@@ -380,7 +380,7 @@ impl Workspace {
                 actions.push(WsAction::Copy(path.clone()));
                 ui.close_menu();
             }
-            if ui.button(format!("{ICON_FOLDER_OPEN}  Afficher dans l'Explorateur")).clicked() {
+            if ui.button(format!("{ICON_FOLDER_OPEN}  Afficher dans {}", crate::platform::FILE_MANAGER)).clicked() {
                 actions.push(WsAction::Reveal(path.clone()));
                 ui.close_menu();
             }
@@ -413,10 +413,10 @@ fn human_size(b: u64) -> String {
 pub fn pretty_hotkey(s: &str) -> String {
     s.split('+')
         .map(|t| match t.trim().to_lowercase().as_str() {
-            "ctrl" | "control" => "Ctrl".to_string(),
-            "shift" => "Maj".to_string(),
-            "alt" | "option" => "Alt".to_string(),
-            "super" | "win" | "meta" => "Win".to_string(),
+            "ctrl" | "control" => if cfg!(target_os = "macos") { "⌃" } else { "Ctrl" }.to_string(),
+            "shift" => if cfg!(target_os = "macos") { "⇧" } else { "Maj" }.to_string(),
+            "alt" | "option" => if cfg!(target_os = "macos") { "⌥" } else { "Alt" }.to_string(),
+            "super" | "win" | "meta" | "cmd" | "command" => if cfg!(target_os = "macos") { "⌘" } else { "Win" }.to_string(),
             "printscreen" => "Impr. écran".to_string(),
             other => {
                 let o = other.trim_start_matches("key").trim_start_matches("digit");

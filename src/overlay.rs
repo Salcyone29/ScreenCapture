@@ -81,7 +81,7 @@ impl Overlay {
         if self.texture.is_none() {
             self.texture = Some(TiledTexture::new(ctx, "overlay", &self.image, TextureOptions::NEAREST));
         }
-        let ppp = ctx.pixels_per_point();
+        let ppp = crate::platform::units_per_point(ctx);
         let o = self.origin;
         let to_pt = move |x: i32, y: i32| pos2((x - o.x) as f32 / ppp, (y - o.y) as f32 / ppp);
         let rect_pt = |r: Rect| ERect::from_min_max(to_pt(r.x, r.y), to_pt(r.x + r.w, r.y + r.h));
