@@ -3,6 +3,7 @@
 
 mod app;
 mod capture;
+mod diag;
 mod editor;
 mod icon;
 mod overlay;
@@ -28,11 +29,14 @@ pub fn debug_log(msg: &str) {
 use eframe::egui;
 
 fn main() -> eframe::Result<()> {
-    if !platform::acquire_single_instance() {
+    diag::init();
+    let from_startup = std::env::args().any(|a| a == "--tray");
+    // Démarrage avec Windows : ne pas faire apparaître une instance déjà lancée.
+    if !platform::acquire_single_instance(!from_startup) {
         return Ok(());
     }
     let settings = settings::Settings::load();
-    let start_hidden = settings.start_in_tray || std::env::args().any(|a| a == "--tray");
+    let start_hidden = settings.start_in_tray || from_startup;
     let icon = egui::IconData { rgba: icon::app_icon(64), width: 64, height: 64 };
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

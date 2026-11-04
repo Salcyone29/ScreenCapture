@@ -12,7 +12,7 @@ use crate::app::CaptureKind;
 use crate::settings::Settings;
 use crate::theme::{self, palette, ButtonKind};
 
-const IMAGE_EXT: [&str; 5] = ["png", "jpg", "jpeg", "bmp", "gif"];
+pub const IMAGE_EXT: [&str; 5] = ["png", "jpg", "jpeg", "bmp", "gif"];
 const VIDEO_EXT: [&str; 3] = ["mp4", "webm", "mkv"];
 
 pub struct Item {
@@ -62,7 +62,7 @@ impl Workspace {
         std::thread::spawn(move || {
             while let Ok(path) = req_rx.recv() {
                 let thumb = image::open(&path).ok().map(|img| {
-                    let t = img.thumbnail(440, 248).to_rgba8();
+                    let t = fit_thumbnail(&img.to_rgba8(), 440, 248);
                     ColorImage::from_rgba_unmultiplied([t.width() as usize, t.height() as usize], t.as_raw())
                 });
                 if res_tx.send((path, thumb)).is_err() {
@@ -196,7 +196,7 @@ impl Workspace {
                     if theme::icon_button(ui, ICON_IMAGE, false, "Ouvrir une image dans l'éditeur").clicked() {
                         actions.push(WsAction::OpenFile);
                     }
-                    if theme::icon_button(ui, ICON_CONTENT_PASTE, false, &crate::platform::sc("Éditer l'image du presse-papiers (Ctrl+V)")).clicked() {
+                    if theme::icon_button(ui, ICON_CONTENT_PASTE, false, &crate::platform::sc("Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)")).clicked() {
                         actions.push(WsAction::Paste);
                     }
                     if theme::icon_button(ui, ICON_REFRESH, false, "Actualiser").clicked() {
@@ -425,4 +425,16 @@ pub fn pretty_hotkey(s: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join(" + ")
+}
+
+/// Vignette qui tient dans `max_w × max_h` en gardant les proportions ; une petite image n'est
+/// pas agrandie (l'affichage s'en charge), ce qui évite toute déformation.
+pub fn fit_thumbnail(img: &image::RgbaImage, max_w: u32, max_h: u32) -> image::RgbaImage {
+    let (w, h) = img.dimensions();
+    if w <= max_w && h <= max_h {
+        return img.clone();
+    }
+    let k = (max_w as f64 / w as f64).min(max_h as f64 / h as f64);
+    let (tw, th) = (((w as f64 * k).round() as u32).max(1), ((h as f64 * k).round() as u32).max(1));
+    image::imageops::thumbnail(img, tw, th)
 }

@@ -177,7 +177,7 @@ pub fn install_printscreen_hook(_handler: PrintScreenHandler) -> bool {
 }
 
 /// Renvoie `false` si une autre instance tourne déjà (verrou sur un fichier temporaire).
-pub fn acquire_single_instance() -> bool {
+pub fn acquire_single_instance(_activate_existing: bool) -> bool {
     static LOCK: std::sync::OnceLock<std::fs::File> = std::sync::OnceLock::new();
     let path = std::env::temp_dir().join("ScreenCapture.Rust.SingleInstance.lock");
     let Ok(file) = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(path) else {
@@ -190,6 +190,9 @@ pub fn acquire_single_instance() -> bool {
     let _ = LOCK.set(file);
     true
 }
+
+/// Sur Mac, relancer l'application la réactive déjà (Dock / Finder).
+pub fn activation_listener(_f: impl Fn() + Send + 'static) {}
 
 /// Envoie un fichier dans la Corbeille (récupérable).
 pub fn move_to_recycle_bin(path: &Path) -> anyhow::Result<()> {

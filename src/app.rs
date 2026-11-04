@@ -47,7 +47,7 @@ pub enum AppEvent {
     AudioDevices(Vec<String>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mode {
     Workspace,
     Editor,
@@ -171,6 +171,8 @@ pub struct App {
     snackbar: Option<(String, Instant)>,
     ocr_text: Option<String>,
     busy: bool,
+    /// Début de la capture en cours, pour ne jamais rester bloqué en « occupé ».
+    busy_since: Instant,
     quit: bool,
     applied_theme: Option<(ThemeChoice, Accent, bool)>,
     hotkey_edit: crate::settings::Hotkeys,
@@ -216,8 +218,9 @@ impl App {
         {
             let prt = hotkeys.printscreen.clone();
             let snip = hotkeys.override_snip.clone();
-            let tx = tx.clone();
-            let ctx = ctx.clone();
+            // Le hook clavier doit répondre en quelques millisecondes, sinon Windows le retire :
+            // il ne fait que poster l'évènement, un thread relais réveille l'interface.
+            let tx = relay(tx.clone(), ctx.clone());
             hotkeys.hook_ok = platform::install_printscreen_hook(Box::new(move |m| {
                 let kind = if m & platform::KEY_SNIP != 0 {
                     snip.load(std::sync::atomic::Ordering::SeqCst).then_some(CaptureKind::Region)
@@ -229,7 +232,6 @@ impl App {
                         if m & platform::NO_FIRE == 0 {
                             crate::debug_log(&format!("raccourci (hook) -> {k:?}"));
                             let _ = tx.send(AppEvent::Shortcut(k));
-                            ctx.request_repaint();
                         }
                         true
                     }
@@ -238,6 +240,22 @@ impl App {
             }));
         }
         hotkeys.apply(&settings.hotkeys);
+        crate::diag::log(&format!("hook Impr. écran : {}", if hotkeys.hook_ok { "installé" } else { "indisponible" }));
+        crate::diag::start_watchdog(&ctx);
+        {
+            // Nouvelle instance lancée (menu Démarrer…) : afficher la fenêtre. Si l'interface
+            // ne répond plus, quitter pour que la nouvelle instance prenne le relais.
+            let tx = tx.clone();
+            let ctx = ctx.clone();
+            platform::activation_listener(move || {
+                crate::diag::log("demande d'affichage par une nouvelle instance");
+                let _ = tx.send(AppEvent::TrayOpen);
+                if !crate::diag::ui_responds(&ctx, Duration::from_secs(4)) {
+                    crate::diag::log(&format!("interface bloquée ({}) : arrêt pour relance", crate::diag::describe_block()));
+                    std::process::exit(3);
+                }
+            });
+        }
 
         // Icône de la zone de notification.
         let mut menu_ids = HashMap::new();
@@ -250,6 +268,7 @@ impl App {
             let win = Window(hwnd);
             let quit_id = menu_ids.iter().find(|(_, v)| **v == "quit").map(|(k, _)| k.clone());
             MenuEvent::set_event_handler(Some(move |e: MenuEvent| {
+                crate::diag::step("menu de notification");
                 win.rescue();
                 if Some(&e.id.0) == quit_id.as_ref() {
                     // Filet de sécurité : quitter même si l'interface ne traite plus les évènements.
@@ -267,6 +286,7 @@ impl App {
             let ctx = ctx.clone();
             let win = Window(hwnd);
             TrayIconEvent::set_event_handler(Some(move |e: TrayIconEvent| {
+                crate::diag::step("clic sur l'icône de notification");
                 win.rescue();
                 let open = matches!(
                     e,
@@ -303,6 +323,7 @@ impl App {
             snackbar: None,
             ocr_text: None,
             busy: false,
+            busy_since: Instant::now(),
             quit: false,
             applied_theme: None,
             hotkey_edit,
@@ -324,6 +345,8 @@ impl App {
     // ------------------------------------------------------------------ fenêtre
 
     fn show_main(&mut self, ctx: &egui::Context) {
+        crate::diag::step("affichage de la fenêtre");
+        crate::diag::log(&format!("affichage de la fenêtre (mode {:?}, écrans {:?})", self.mode, capture::monitors()));
         match self.saved.take() {
             Some(s) => self.win.restore(&s),
             None => self.win.focus(),
@@ -334,6 +357,7 @@ impl App {
     }
 
     fn hide_main(&mut self) {
+        crate::diag::step("masquage de la fenêtre");
         if self.saved.is_none() {
             self.saved = self.win.save();
         }
@@ -345,6 +369,8 @@ impl App {
         if self.saved.is_none() {
             self.saved = self.win.save();
         }
+        crate::diag::step("fenêtre flottante");
+        crate::diag::log(&format!("fenêtre flottante {r:?} (mode {:?})", self.mode));
         self.win.popup(r, exclude, activate);
         self.visible = true;
     }
@@ -356,9 +382,21 @@ impl App {
             self.stop_recording(ctx);
             return;
         }
+        // Une capture qui ne revient pas (pilote, écran en veille…) ne doit pas tout bloquer.
+        if self.busy && self.busy_since.elapsed() > Duration::from_secs(20) {
+            crate::diag::log("capture précédente sans réponse depuis 20 s : abandonnée");
+            self.busy = false;
+        }
         if self.busy || self.overlay.is_some() || self.recorder.is_some() {
+            crate::diag::log(&format!(
+                "capture {kind:?} ignorée (occupé {}, sélection {}, vidéo {})",
+                self.busy,
+                self.overlay.is_some(),
+                self.recorder.is_some()
+            ));
             return;
         }
+        crate::diag::log(&format!("capture {kind:?} (raccourci {from_hotkey}, mode {:?})", self.mode));
         // Une nouvelle capture remplace la miniature éventuellement affichée.
         if self.popup.take().is_some() {
             self.win.round_corners(false);
@@ -377,6 +415,7 @@ impl App {
         self.visible_before_capture = was_visible || self.mode == Mode::Editor;
         self.hide_main();
         self.busy = true;
+        self.busy_since = Instant::now();
         let delay = match kind {
             CaptureKind::Delayed => Duration::from_secs(self.settings.delay_seconds as u64),
             _ if was_visible => Duration::from_millis(280),
@@ -388,10 +427,21 @@ impl App {
         std::thread::spawn(move || {
             std::thread::sleep(delay);
             let origin = capture::virtual_screen();
-            let ev = match capture::capture_rect(origin, cursor) {
-                Ok(image) => AppEvent::Captured { kind, image, origin, target },
-                Err(e) => AppEvent::CaptureFailed(e.to_string()),
+            let started = Instant::now();
+            let result = std::panic::catch_unwind(|| capture::capture_rect(origin, cursor));
+            let ev = match result {
+                Ok(Ok(image)) => AppEvent::Captured { kind, image, origin, target },
+                Ok(Err(e)) => AppEvent::CaptureFailed(e.to_string()),
+                Err(_) => AppEvent::CaptureFailed("erreur interne pendant la capture".into()),
             };
+            crate::diag::log(&format!(
+                "écran capturé {origin:?} en {} ms : {}",
+                started.elapsed().as_millis(),
+                match &ev {
+                    AppEvent::CaptureFailed(e) => e.as_str(),
+                    _ => "ok",
+                }
+            ));
             let _ = tx.send(ev);
             ctx.request_repaint();
         });
@@ -446,7 +496,7 @@ impl App {
             return;
         };
         if pop.texture.is_none() {
-            let t = image::imageops::thumbnail(&pop.image, 640, 360);
+            let t = crate::workspace::fit_thumbnail(&pop.image, 640, 360);
             let ci = egui::ColorImage::from_rgba_unmultiplied([t.width() as usize, t.height() as usize], t.as_raw());
             pop.texture = Some(ctx.load_texture("capture-popup", ci, egui::TextureOptions::LINEAR));
         }
@@ -573,11 +623,16 @@ impl App {
     }
 
     fn new_capture_path(&self, ext: &str) -> PathBuf {
+        self.unique_path("Capture", ext)
+    }
+
+    /// `<préfixe>_<date>.<ext>` dans le dossier des captures, sans écraser un fichier existant.
+    fn unique_path(&self, prefix: &str, ext: &str) -> PathBuf {
         let stamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S");
-        let mut p = self.settings.save_dir.join(format!("Capture_{stamp}.{ext}"));
+        let mut p = self.settings.save_dir.join(format!("{prefix}_{stamp}.{ext}"));
         let mut n = 2;
         while p.exists() {
-            p = self.settings.save_dir.join(format!("Capture_{stamp}_{n}.{ext}"));
+            p = self.settings.save_dir.join(format!("{prefix}_{stamp}_{n}.{ext}"));
             n += 1;
         }
         p
@@ -745,6 +800,14 @@ impl App {
 
     fn handle_events(&mut self, ctx: &egui::Context) {
         while let Ok(ev) = self.rx.try_recv() {
+            crate::diag::step("traitement d'un évènement");
+            match &ev {
+                AppEvent::Hotkey(id) => crate::diag::log(&format!("raccourci global {id}")),
+                AppEvent::Shortcut(k) => crate::diag::log(&format!("raccourci Impr. écran {k:?}")),
+                AppEvent::Menu(id) => crate::diag::log(&format!("menu {:?}", self.menu_ids.get(id))),
+                AppEvent::TrayOpen => crate::diag::log(&format!("ouverture demandée (mode {:?})", self.mode)),
+                _ => {}
+            }
             match ev {
                 AppEvent::Hotkey(id) => {
                     if let Some(k) = self.hotkeys.kind_of(id) {
@@ -776,6 +839,19 @@ impl App {
                     _ => {}
                 },
                 AppEvent::TrayOpen => {
+                    // Sélection ou miniature restée affichée (écran débranché…) : revenir à l'espace de travail.
+                    match self.mode {
+                        Mode::Overlay => {
+                            self.overlay = None;
+                            self.mode = if self.editor.is_some() { Mode::Editor } else { Mode::Workspace };
+                        }
+                        Mode::Popup => {
+                            self.popup = None;
+                            self.win.round_corners(false);
+                            self.mode = if self.editor.is_some() { Mode::Editor } else { Mode::Workspace };
+                        }
+                        _ => {}
+                    }
                     if self.mode == Mode::Workspace || self.mode == Mode::Editor {
                         self.show_main(ctx);
                     }
@@ -821,6 +897,7 @@ impl App {
     }
 
     fn request_quit(&mut self, ctx: &egui::Context) {
+        crate::diag::log("arrêt demandé");
         self.close_editor(true);
         if let Some(rec) = self.recorder.take() {
             let _ = rec.finish();
@@ -1091,6 +1168,21 @@ impl App {
             });
             ui.add_space(12.0);
 
+            theme::card(ui, "Diagnostic", ICON_BUG_REPORT, |ui| {
+                let path = crate::diag::log_path();
+                theme::setting_row(ui, "Journal de diagnostic", &path.display().to_string(), |ui| {
+                    if theme::button(ui, ButtonKind::Tonal, Some(ICON_FOLDER_OPEN), "Ouvrir le dossier").clicked() {
+                        platform::open_folder(&crate::diag::log_dir());
+                    }
+                });
+                ui.label(
+                    egui::RichText::new("En cas de blocage, relancer ScreenCapture depuis le menu Démarrer remplace l'instance bloquée ; le journal indique alors l'étape en cause.")
+                        .size(12.0)
+                        .color(p.on_surface_variant),
+                );
+            });
+            ui.add_space(12.0);
+
             theme::card(ui, "Couleurs de l'éditeur", ICON_COLOR_LENS, |ui| {
                 changed |= self.palette_editor(ui);
             });
@@ -1297,15 +1389,76 @@ impl App {
         }
     }
 
+    /// Colle l'image du presse-papiers (ou les fichiers image copiés) dans le dossier des captures.
     fn paste_clipboard(&mut self) {
-        match arboard::Clipboard::new().and_then(|mut c| c.get_image()) {
-            Ok(img) => {
-                if let Some(rgba) = RgbaImage::from_raw(img.width as u32, img.height as u32, img.bytes.into_owned()) {
-                    self.open_editor(rgba, None);
+        crate::diag::step("collage du presse-papiers");
+        let Ok(mut cb) = arboard::Clipboard::new() else {
+            self.toast("Presse-papiers indisponible");
+            return;
+        };
+        if let Ok(img) = cb.get_image() {
+            let Some(rgba) = RgbaImage::from_raw(img.width as u32, img.height as u32, img.bytes.into_owned()) else { return };
+            let r = std::fs::create_dir_all(&self.settings.save_dir).map_err(anyhow::Error::from).and_then(|_| {
+                let path = self.unique_path("Collage", self.settings.image_format.ext());
+                save_image(&rgba, &path, self.settings.jpeg_quality).map(|_| path)
+            });
+            match r {
+                Ok(path) => {
+                    self.workspace.refresh();
+                    self.page = Page::Home;
+                    self.toast(format!("Image collée : {}", path.file_name().unwrap_or_default().to_string_lossy()));
                 }
+                Err(e) => self.toast(format!("Enregistrement impossible : {e}")),
             }
-            Err(_) => self.toast("Le presse-papiers ne contient pas d'image"),
+            return;
         }
+        let files = cb.get().file_list().unwrap_or_default();
+        if files.is_empty() {
+            self.toast("Le presse-papiers ne contient pas d'image");
+        } else {
+            self.import_files(&files);
+        }
+    }
+
+    /// Copie des fichiers image (collés ou déposés) dans le dossier des captures.
+    fn import_files(&mut self, files: &[PathBuf]) {
+        let images: Vec<&PathBuf> = files
+            .iter()
+            .filter(|f| {
+                let ext = f.extension().map(|x| x.to_string_lossy().to_lowercase()).unwrap_or_default();
+                f.is_file() && crate::workspace::IMAGE_EXT.contains(&ext.as_str())
+            })
+            .collect();
+        if images.is_empty() {
+            self.toast("Aucune image parmi les fichiers");
+            return;
+        }
+        let _ = std::fs::create_dir_all(&self.settings.save_dir);
+        let mut copied = 0;
+        for f in &images {
+            if f.parent() == Some(self.settings.save_dir.as_path()) {
+                continue;
+            }
+            let mut dest = self.settings.save_dir.join(f.file_name().unwrap_or_default());
+            let stem = f.file_stem().unwrap_or_default().to_string_lossy().to_string();
+            let ext = f.extension().unwrap_or_default().to_string_lossy().to_string();
+            let mut n = 2;
+            while dest.exists() {
+                dest = self.settings.save_dir.join(format!("{stem}_{n}.{ext}"));
+                n += 1;
+            }
+            match std::fs::copy(f, &dest) {
+                Ok(_) => copied += 1,
+                Err(e) => crate::diag::log(&format!("copie impossible de {}: {e}", f.display())),
+            }
+        }
+        self.workspace.refresh();
+        self.page = Page::Home;
+        self.toast(match copied {
+            0 => "Ces images sont déjà dans le dossier des captures".to_string(),
+            1 => "1 image ajoutée au dossier des captures".to_string(),
+            n => format!("{n} images ajoutées au dossier des captures"),
+        });
     }
 
     fn recording_bar(&mut self, ctx: &egui::Context) {
@@ -1396,6 +1549,7 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        crate::diag::heartbeat();
         self.apply_theme_if_needed(ctx);
         if std::mem::take(&mut self.park_on_start) {
             self.hide_main();
@@ -1404,6 +1558,7 @@ impl eframe::App for App {
         // Écran débranché alors que la fenêtre y était affichée : la ramener (vérifié toutes les 2 s).
         if self.visible && self.saved.is_none() && self.screen_check.elapsed() > Duration::from_secs(2) {
             self.screen_check = Instant::now();
+            crate::diag::step("vérification des écrans");
             self.win.rescue();
             ctx.request_repaint_after(Duration::from_secs(2));
         }
@@ -1421,6 +1576,13 @@ impl eframe::App for App {
             }
         }
 
+        crate::diag::step(match self.mode {
+            Mode::Overlay => "interface : sélection",
+            Mode::Recording => "interface : enregistrement",
+            Mode::Popup => "interface : miniature",
+            Mode::Editor => "interface : éditeur",
+            Mode::Workspace => "interface : espace de travail",
+        });
         match self.mode {
             Mode::Overlay => {
                 if let Some(ov) = &self.overlay {
@@ -1475,6 +1637,11 @@ impl eframe::App for App {
                 if !ctx.wants_keyboard_input() && ctx.input(|i| i.modifiers.command && i.key_pressed(Key::V)) {
                     self.paste_clipboard();
                 }
+                // Fichiers glissés depuis l'Explorateur / le Finder.
+                let dropped: Vec<PathBuf> = ctx.input(|i| i.raw.dropped_files.iter().filter_map(|f| f.path.clone()).collect());
+                if !dropped.is_empty() {
+                    self.import_files(&dropped);
+                }
                 self.nav_rail(ctx);
                 let p = palette(ctx);
                 let mut ws_actions = Vec::new();
@@ -1497,6 +1664,8 @@ impl eframe::App for App {
         if self.finishing_video {
             ctx.request_repaint_after(Duration::from_millis(500));
         }
+        // Après `update`, eframe dessine et présente l'image (pilote graphique), puis attend les évènements.
+        crate::diag::step("après update : rendu graphique ou attente d'évènements");
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
@@ -1543,6 +1712,7 @@ fn build_tray(ids: &mut HashMap<String, &'static str>, settings: &Settings) -> a
 }
 
 pub fn copy_image(img: &RgbaImage) -> anyhow::Result<()> {
+    crate::diag::step("copie dans le presse-papiers");
     let mut cb = arboard::Clipboard::new()?;
     cb.set_image(arboard::ImageData {
         width: img.width() as usize,
@@ -1569,4 +1739,19 @@ pub fn save_image(img: &RgbaImage, path: &Path, jpeg_quality: u8) -> anyhow::Res
         img.save(path)?;
     }
     Ok(())
+}
+
+/// Thread relais : transmet les évènements et réveille l'interface, pour les appelants qui
+/// ne doivent jamais attendre le verrou du contexte egui (hook clavier).
+fn relay(tx: Sender<AppEvent>, ctx: egui::Context) -> Sender<AppEvent> {
+    let (relay_tx, relay_rx) = channel::<AppEvent>();
+    let _ = std::thread::Builder::new().name("relais".into()).spawn(move || {
+        for ev in relay_rx {
+            if tx.send(ev).is_err() {
+                break;
+            }
+            ctx.request_repaint();
+        }
+    });
+    relay_tx
 }

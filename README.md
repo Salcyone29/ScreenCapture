@@ -5,6 +5,7 @@ Outil de capture d'écran, d'annotation et d'enregistrement vidéo écrit en Rus
 ## Fonctionnalités
 
 - Capture de zone, plein écran, fenêtre, dernière zone et capture différée
+- Coller une image (Ctrl+V) ou glisser des fichiers dans l'espace de travail : ils sont ajoutés au dossier des captures
 - Éditeur : flèches, formes, texte, bulles, surligneur, flou, loupe, numérotation (1, 01, A, a, I, i, α), tampons, recadrage, découpe de bande (droite ou zigzag), déplacement de zone, pipette, nuancier personnalisable
 - Reconnaissance de texte (OCR)
 - Enregistrement vidéo MP4 / WebM / GIF via FFmpeg, avec micro
@@ -41,6 +42,12 @@ Prérequis : [Rust](https://rustup.rs) et les outils de ligne de commande Xcode 
 ./build-macos.sh            # binaire universel → dist/ScreenCapture-x.y.z-macOS.dmg
 ./build-macos.sh --native   # architecture du Mac uniquement, plus rapide
 ```
+
+## Diagnostic
+
+Un journal est écrit dans `%LOCALAPPDATA%\ScreenCapture\logs\screencapture.log` (Windows) ou `~/Library/Logs/ScreenCapture/screencapture.log` (macOS) ; le bouton **Paramètres → Diagnostic → Ouvrir le dossier** y mène. Il note les écrans, les captures, les changements de fenêtre et, si l'interface cesse de répondre, la dernière étape atteinte.
+
+Si l'application ne répond plus, la relancer depuis le menu Démarrer : l'instance bloquée s'arrête (le journal note l'étape en cause) et la nouvelle prend le relais.
 
 ## Compilation automatique
 

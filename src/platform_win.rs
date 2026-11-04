@@ -267,13 +267,49 @@ unsafe extern "system" fn keyboard_proc(
     CallNextHookEx(HHOOK::default(), code, wparam, lparam)
 }
 
-/// Renvoie `false` si une autre instance tourne déjà.
-pub fn acquire_single_instance() -> bool {
+/// Renvoie `false` si une autre instance tourne déjà. Avec `activate_existing`, celle-ci est priée
+/// d'afficher sa fenêtre ; si elle est bloquée elle se termine, et cette instance prend le relais.
+pub fn acquire_single_instance(activate_existing: bool) -> bool {
+    use windows::Win32::Foundation::{WAIT_ABANDONED, WAIT_OBJECT_0};
+    use windows::Win32::System::Threading::{OpenEventW, SetEvent, WaitForSingleObject, EVENT_MODIFY_STATE};
     unsafe {
-        let handle = CreateMutexW(None, true, w!("Local\\ScreenCapture.Rust.SingleInstance"));
         // Le handle est volontairement conservé pendant toute la vie du processus.
-        handle.is_ok() && GetLastError() != ERROR_ALREADY_EXISTS
+        let Ok(handle) = CreateMutexW(None, true, w!("Local\\ScreenCapture.Rust.SingleInstance")) else {
+            return true;
+        };
+        if GetLastError() != ERROR_ALREADY_EXISTS {
+            return true;
+        }
+        if !activate_existing {
+            return false;
+        }
+        crate::diag::log("une autre instance tourne : demande d'affichage");
+        if let Ok(ev) = OpenEventW(EVENT_MODIFY_STATE, false, ACTIVATE_EVENT) {
+            let _ = SetEvent(ev);
+        }
+        let w = WaitForSingleObject(handle, 9000);
+        let take_over = w == WAIT_OBJECT_0 || w == WAIT_ABANDONED;
+        if take_over {
+            crate::diag::log("l'instance précédente s'est arrêtée : relance");
+        }
+        take_over
     }
+}
+
+const ACTIVATE_EVENT: PCWSTR = w!("Local\\ScreenCapture.Rust.Activate");
+
+/// Appelle `f` (depuis un thread dédié) chaque fois qu'une nouvelle instance est lancée.
+pub fn activation_listener(f: impl Fn() + Send + 'static) {
+    use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject, INFINITE};
+    let Ok(ev) = (unsafe { CreateEventW(None, false, false, ACTIVATE_EVENT) }) else { return };
+    let ev = ev.0 as isize;
+    let _ = std::thread::Builder::new().name("activation".into()).spawn(move || loop {
+        let h = windows::Win32::Foundation::HANDLE(ev as *mut _);
+        if unsafe { WaitForSingleObject(h, INFINITE) } != windows::Win32::Foundation::WAIT_OBJECT_0 {
+            return;
+        }
+        f();
+    });
 }
 
 /// Envoie un fichier dans la corbeille (récupérable).

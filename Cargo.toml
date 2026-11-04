@@ -1,6 +1,6 @@
 [package]
 name = "screencapture"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "Outil de capture d'écran et d'annotation en Rust avec un design Material 3 (Windows et macOS)"
 
