@@ -495,3 +495,10 @@ pub fn cancel_modal_loops() -> bool {
     }
     n > 0
 }
+
+/// Touche V enfoncée (pour Ctrl+V : egui n'émet aucun évènement quand le presse-papiers
+/// contient une image et pas de texte).
+pub fn is_v_key_down() -> bool {
+    use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
+    unsafe { GetAsyncKeyState(0x56) as u16 & 0x8000 != 0 }
+}

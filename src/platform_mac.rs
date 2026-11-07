@@ -282,3 +282,14 @@ fn bring_app_to_front(mtm: MainThreadMarker) {
 pub fn cancel_modal_loops() -> bool {
     false
 }
+
+/// Touche V enfoncée (pour ⌘V : egui n'émet aucun évènement quand le presse-papiers
+/// contient une image et pas de texte).
+pub fn is_v_key_down() -> bool {
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGEventSourceKeyState(state_id: i32, key: u16) -> bool;
+    }
+    // kCGEventSourceStateCombinedSessionState = 0, kVK_ANSI_V = 9.
+    unsafe { CGEventSourceKeyState(0, 9) }
+}

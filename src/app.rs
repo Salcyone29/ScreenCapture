@@ -7,7 +7,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, vec2, Align2, Color32, CornerRadius, FontId, Key, Margin, Vec2};
+use eframe::egui::{self, vec2, Align2, Color32, CornerRadius, FontId, Margin, Vec2};
 use egui_material_icons::icons::*;
 use global_hotkey::hotkey::{Code, HotKey, Modifiers};
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
@@ -181,6 +181,8 @@ pub struct App {
     /// Pastille du nuancier en cours de modification dans les Paramètres.
     palette_sel: Option<usize>,
     palette_hex: (usize, String),
+    /// Ctrl+V déjà traité tant que la touche reste enfoncée.
+    paste_down: bool,
     screen_check: Instant,
     park_on_start: bool,
     title: String,
@@ -341,6 +343,7 @@ impl App {
             mic_refresh: None,
             palette_sel: None,
             palette_hex: (usize::MAX, String::new()),
+            paste_down: false,
             screen_check: Instant::now(),
             park_on_start: start_hidden,
             title: String::new(),
@@ -1527,7 +1530,9 @@ impl App {
                     .inner_margin(Margin::symmetric(16, 12))
                     .shadow(egui::epaint::Shadow { offset: [0, 3], blur: 10, spread: 0, color: Color32::from_black_alpha(60) })
                     .show(ui, |ui| {
-                        ui.label(egui::RichText::new(msg).color(p.inverse_on_surface));
+                        // Sans largeur imposée, la bulle se dimensionne à la première image et
+                        // le texte passait à la ligne après chaque mot.
+                        ui.add(egui::Label::new(egui::RichText::new(msg).color(p.inverse_on_surface)).extend());
                     });
             });
         ctx.request_repaint_after(Duration::from_millis(250));
@@ -1650,9 +1655,15 @@ impl eframe::App for App {
             }
             Mode::Workspace => {
                 self.set_title(ctx, "ScreenCapture".into());
-                if !ctx.wants_keyboard_input() && ctx.input(|i| i.modifiers.command && i.key_pressed(Key::V)) {
+                // Ctrl+V : egui le transforme en collage de texte et n'émet rien quand le presse-papiers
+                // ne contient qu'une image ; on lit donc l'état de la touche V.
+                let (command, focused, text_paste) =
+                    ctx.input(|i| (i.modifiers.command, i.focused, i.events.iter().any(|e| matches!(e, egui::Event::Paste(_)))));
+                let paste = command && focused && (platform::is_v_key_down() || text_paste);
+                if paste && !self.paste_down && !ctx.wants_keyboard_input() {
                     self.paste_clipboard();
                 }
+                self.paste_down = paste;
                 // Fichiers glissés depuis l'Explorateur / le Finder.
                 let dropped: Vec<PathBuf> = ctx.input(|i| i.raw.dropped_files.iter().filter_map(|f| f.path.clone()).collect());
                 if !dropped.is_empty() {
