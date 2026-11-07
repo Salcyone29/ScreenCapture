@@ -133,8 +133,23 @@ impl Window {
         }
     }
 
+    /// Sort la fenêtre du Dock si elle a été réduite. Renvoie `true` si elle l'était.
+    pub fn unminimize(self) -> bool {
+        let Some((w, _)) = self.ns_window() else { return false };
+        if !w.isMiniaturized() {
+            return false;
+        }
+        unsafe { w.deminiaturize(None) };
+        super::WAS_MINIMIZED.store(true, std::sync::atomic::Ordering::SeqCst);
+        crate::diag::log("fenêtre réduite : restaurée");
+        true
+    }
+
     /// Replace la fenêtre sur un écran branché si elle est restée sur un écran débranché.
     pub fn rescue(self) {
+        if self.unminimize() {
+            return;
+        }
         let Some((w, _)) = self.ns_window() else { return };
         let r = from_cocoa(w.frame());
         let fit = crate::capture::fit_on_screen(r);
@@ -258,4 +273,9 @@ pub fn ocr(img: &image::RgbaImage) -> anyhow::Result<String> {
 #[allow(deprecated)]
 fn bring_app_to_front(mtm: MainThreadMarker) {
     NSApplication::sharedApplication(mtm).activateIgnoringOtherApps(true);
+}
+
+/// Pas de boucle modale de menu à débloquer sur Mac.
+pub fn cancel_modal_loops() -> bool {
+    false
 }

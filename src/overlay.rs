@@ -34,6 +34,8 @@ pub struct Overlay {
     drag_start: Option<(i32, i32)>,
     current: Option<Rect>,
     mag: Option<TextureHandle>,
+    /// Afficher la loupe de précision (réglage « Loupe de précision »).
+    pub magnifier: bool,
     frames: u32,
 }
 
@@ -52,6 +54,7 @@ impl Overlay {
             drag_start: None,
             current: None,
             mag: None,
+            magnifier: true,
             frames: 0,
         }
     }
@@ -87,9 +90,8 @@ impl Overlay {
         let rect_pt = |r: Rect| ERect::from_min_max(to_pt(r.x, r.y), to_pt(r.x + r.w, r.y + r.h));
 
         let mut result = OverlayResult::Pending;
-        let (hover, pressed, released, down, esc, enter, key_c, right) = ctx.input(|i| {
+        let (pressed, released, down, esc, enter, key_c, right) = ctx.input(|i| {
             (
-                i.pointer.latest_pos(),
                 i.pointer.primary_pressed(),
                 i.pointer.primary_released(),
                 i.pointer.primary_down(),
@@ -99,9 +101,10 @@ impl Overlay {
                 i.pointer.secondary_clicked(),
             )
         });
-        let cursor = hover
-            .map(|h| (self.origin.x + (h.x * ppp).round() as i32, self.origin.y + (h.y * ppp).round() as i32))
-            .unwrap_or_else(capture::cursor_pos);
+        // Position lue auprès du système : celle d'egui date d'avant l'affichage de la sélection
+        // (fenêtre de l'espace de travail ou garée hors écran) tant que la souris n'a pas bougé,
+        // ce qui faisait apparaître la loupe ailleurs pendant les premières images.
+        let cursor = capture::cursor_pos();
 
         if esc || right {
             return OverlayResult::Cancel;
@@ -191,7 +194,9 @@ impl Overlay {
             painter.rect_filled(bar, 22.0, p.inverse_surface);
             painter.galley(bar.min + vec2(18.0, 9.0), g, p.inverse_on_surface);
 
-            self.paint_magnifier(ctx, painter, cursor, c, full);
+            if self.magnifier {
+                self.paint_magnifier(ctx, painter, cursor, c, full);
+            }
         });
 
         crate::theme::crosshair_cursor(ctx);

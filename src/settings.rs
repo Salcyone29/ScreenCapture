@@ -111,6 +111,8 @@ pub struct Settings {
     pub copy_to_clipboard: bool,
     pub auto_save: bool,
     pub capture_cursor: bool,
+    /// Loupe de précision à côté du curseur pendant la sélection.
+    pub show_magnifier: bool,
     pub delay_seconds: u32,
     pub hotkeys: Hotkeys,
     pub theme: ThemeChoice,
@@ -146,6 +148,7 @@ impl Default for Settings {
             copy_to_clipboard: true,
             auto_save: true,
             capture_cursor: false,
+            show_magnifier: true,
             delay_seconds: 3,
             hotkeys: Hotkeys::default(),
             theme: ThemeChoice::System,

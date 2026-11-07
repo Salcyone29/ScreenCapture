@@ -62,6 +62,7 @@ impl Window {
         if !self.is_valid() {
             return;
         }
+        self.unminimize();
         unsafe {
             // Masquer puis réafficher pour que la barre des tâches prenne en compte le style.
             let _ = ShowWindow(self.hwnd(), SW_HIDE);
@@ -92,6 +93,7 @@ impl Window {
         if !self.is_valid() {
             return;
         }
+        self.unminimize();
         self.set_tool_style(true);
         unsafe {
             let _ = SetWindowDisplayAffinity(
@@ -156,9 +158,29 @@ impl Window {
         }
     }
 
+    /// Sort la fenêtre de l'état réduit (Win+D, « Afficher le bureau », clic dans la barre des
+    /// tâches…) : eframe n'exécute plus l'application tant que sa fenêtre est réduite, ce qui
+    /// bloquait captures, raccourcis et menu. Asynchrone, donc appelable depuis n'importe quel thread.
+    /// Renvoie `true` si la fenêtre était réduite.
+    pub fn unminimize(self) -> bool {
+        use windows::Win32::UI::WindowsAndMessaging::{IsIconic, ShowWindowAsync, SW_SHOWNOACTIVATE};
+        if !self.is_valid() || !unsafe { IsIconic(self.hwnd()) }.as_bool() {
+            return false;
+        }
+        unsafe {
+            let _ = ShowWindowAsync(self.hwnd(), SW_SHOWNOACTIVATE);
+        }
+        super::WAS_MINIMIZED.store(true, std::sync::atomic::Ordering::SeqCst);
+        crate::diag::log("fenêtre réduite : restaurée");
+        true
+    }
+
     /// Replace la fenêtre sur un écran connecté si elle est restée sur un écran débranché
     /// (sans effet si elle est garée hors écran volontairement). Appelable depuis un autre thread.
     pub fn rescue(self) {
+        if self.unminimize() {
+            return;
+        }
         let Some(r) = self.rect().filter(|r| r.x > -30000 && r.y > -30000) else {
             return;
         };
@@ -434,4 +456,26 @@ pub fn native_handle(h: raw_window_handle::RawWindowHandle) -> isize {
         raw_window_handle::RawWindowHandle::Win32(h) => h.hwnd.get(),
         _ => 0,
     }
+}
+
+/// Ferme un menu ou un mode modal resté ouvert (menu de notification caché sous la sélection
+/// plein écran…) : tant qu'il est ouvert, Windows suspend la boucle de l'application.
+/// Renvoie `true` si un message a été envoyé.
+pub fn cancel_modal_loops() -> bool {
+    use windows::Win32::Foundation::{LPARAM, WPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{EnumWindows, GetWindowThreadProcessId, PostMessageW, WM_CANCELMODE};
+    unsafe extern "system" fn cb(hwnd: HWND, data: LPARAM) -> windows::Win32::Foundation::BOOL {
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == std::process::id() {
+            let _ = PostMessageW(hwnd, WM_CANCELMODE, WPARAM(0), LPARAM(0));
+            *(data.0 as *mut u32) += 1;
+        }
+        windows::Win32::Foundation::BOOL(1)
+    }
+    let mut n = 0u32;
+    unsafe {
+        let _ = EnumWindows(Some(cb), LPARAM(&mut n as *mut u32 as isize));
+    }
+    n > 0
 }

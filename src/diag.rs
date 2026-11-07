@@ -117,8 +117,9 @@ pub fn ui_responds(ctx: &eframe::egui::Context, timeout: Duration) -> bool {
     false
 }
 
-/// Surveillance : changements d'écrans et blocages de l'interface.
-pub fn start_watchdog(ctx: &eframe::egui::Context) {
+/// Surveillance : changements d'écrans et blocages de l'interface. `unblock` tente de débloquer
+/// (fenêtre réduite) et renvoie `true` s'il a agi.
+pub fn start_watchdog(ctx: &eframe::egui::Context, unblock: impl Fn() -> bool + Send + 'static) {
     let ctx = ctx.clone();
     let _ = std::thread::Builder::new().name("diag-surveillance".into()).spawn(move || {
         let mut screens = crate::capture::monitors();
@@ -131,7 +132,17 @@ pub fn start_watchdog(ctx: &eframe::egui::Context) {
                 log(&format!("écrans modifiés : {screens:?} -> {now:?}"));
                 screens = now;
             }
-            if ui_responds(&ctx, Duration::from_secs(10)) {
+            if !ui_responds(&ctx, Duration::from_secs(10)) {
+                let (name, _) = last_step();
+                unblock();
+                // Fenêtre restaurée ou menu fermé : l'interface repart-elle ?
+                if ui_responds(&ctx, Duration::from_secs(5)) {
+                    log(&format!("interface débloquée automatiquement (étape « {name} »)"));
+                    blocked_since = None;
+                    continue;
+                }
+            }
+            if ui_responds(&ctx, Duration::from_secs(1)) {
                 if let Some(since) = blocked_since.take() {
                     log(&format!("interface débloquée après {} s", (now_ms() - since) / 1000));
                 }

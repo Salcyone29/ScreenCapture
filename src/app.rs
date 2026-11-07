@@ -199,9 +199,11 @@ impl App {
         {
             let tx = tx.clone();
             let ctx = ctx.clone();
+            let win = Window(hwnd);
             GlobalHotKeyEvent::set_event_handler(Some(move |e: GlobalHotKeyEvent| {
                 crate::debug_log(&format!("hotkey {} {:?}", e.id, e.state));
                 if e.state == HotKeyState::Pressed {
+                    win.unminimize();
                     let _ = tx.send(AppEvent::Hotkey(e.id));
                     ctx.request_repaint();
                 }
@@ -220,7 +222,7 @@ impl App {
             let snip = hotkeys.override_snip.clone();
             // Le hook clavier doit répondre en quelques millisecondes, sinon Windows le retire :
             // il ne fait que poster l'évènement, un thread relais réveille l'interface.
-            let tx = relay(tx.clone(), ctx.clone());
+            let tx = relay(tx.clone(), ctx.clone(), Window(hwnd));
             hotkeys.hook_ok = platform::install_printscreen_hook(Box::new(move |m| {
                 let kind = if m & platform::KEY_SNIP != 0 {
                     snip.load(std::sync::atomic::Ordering::SeqCst).then_some(CaptureKind::Region)
@@ -241,14 +243,24 @@ impl App {
         }
         hotkeys.apply(&settings.hotkeys);
         crate::diag::log(&format!("hook Impr. écran : {}", if hotkeys.hook_ok { "installé" } else { "indisponible" }));
-        crate::diag::start_watchdog(&ctx);
+        {
+            let win = Window(hwnd);
+            crate::diag::start_watchdog(&ctx, move || {
+                let restored = win.unminimize();
+                // Menu de notification resté ouvert (invisible sous la sélection plein écran…).
+                platform::cancel_modal_loops();
+                restored
+            });
+        }
         {
             // Nouvelle instance lancée (menu Démarrer…) : afficher la fenêtre. Si l'interface
             // ne répond plus, quitter pour que la nouvelle instance prenne le relais.
             let tx = tx.clone();
             let ctx = ctx.clone();
+            let win = Window(hwnd);
             platform::activation_listener(move || {
                 crate::diag::log("demande d'affichage par une nouvelle instance");
+                win.unminimize();
                 let _ = tx.send(AppEvent::TrayOpen);
                 if !crate::diag::ui_responds(&ctx, Duration::from_secs(4)) {
                     crate::diag::log(&format!("interface bloquée ({}) : arrêt pour relance", crate::diag::describe_block()));
@@ -269,6 +281,7 @@ impl App {
             let quit_id = menu_ids.iter().find(|(_, v)| **v == "quit").map(|(k, _)| k.clone());
             MenuEvent::set_event_handler(Some(move |e: MenuEvent| {
                 crate::diag::step("menu de notification");
+                crate::diag::log(&format!("menu de notification : élément {}", e.id.0));
                 win.rescue();
                 if Some(&e.id.0) == quit_id.as_ref() {
                     // Filet de sécurité : quitter même si l'interface ne traite plus les évènements.
@@ -279,6 +292,7 @@ impl App {
                 }
                 let _ = tx.send(AppEvent::Menu(e.id.0.clone()));
                 ctx.request_repaint();
+                crate::diag::step("menu de notification traité");
             }));
         }
         {
@@ -463,7 +477,9 @@ impl App {
             return;
         }
         let purpose = if kind == CaptureKind::Video { Purpose::Video } else { Purpose::Image };
-        self.overlay = Some(Overlay::new(purpose, origin, image));
+        let mut overlay = Overlay::new(purpose, origin, image);
+        overlay.magnifier = self.settings.show_magnifier;
+        self.overlay = Some(overlay);
         self.mode = Mode::Overlay;
         self.enter_popup(origin, false, true);
         ctx.request_repaint();
@@ -1018,6 +1034,9 @@ impl App {
                         }
                     }
                 });
+                theme::setting_row(ui, "Loupe de précision", "Affiche les pixels agrandis et la couleur sous le curseur pendant la sélection", |ui| {
+                    changed |= theme::switch(ui, &mut self.settings.show_magnifier).changed();
+                });
                 theme::setting_row(ui, "Inclure le curseur", "Dessine le pointeur de la souris dans la capture", |ui| {
                     changed |= theme::switch(ui, &mut self.settings.capture_cursor).changed();
                 });
@@ -1554,6 +1573,12 @@ impl eframe::App for App {
         if std::mem::take(&mut self.park_on_start) {
             self.hide_main();
         }
+        // Fenêtre réduite (bouton, Win+D…) puis restaurée pour que l'application tourne :
+        // « réduire » range l'espace de travail dans la zone de notification.
+        if platform::take_was_minimized() && matches!(self.mode, Mode::Workspace | Mode::Editor) && self.visible {
+            crate::diag::log("fenêtre réduite : rangée dans la zone de notification");
+            self.hide_main();
+        }
         self.handle_events(ctx);
         // Écran débranché alors que la fenêtre y était affichée : la ramener (vérifié toutes les 2 s).
         if self.visible && self.saved.is_none() && self.screen_check.elapsed() > Duration::from_secs(2) {
@@ -1743,13 +1768,15 @@ pub fn save_image(img: &RgbaImage, path: &Path, jpeg_quality: u8) -> anyhow::Res
 
 /// Thread relais : transmet les évènements et réveille l'interface, pour les appelants qui
 /// ne doivent jamais attendre le verrou du contexte egui (hook clavier).
-fn relay(tx: Sender<AppEvent>, ctx: egui::Context) -> Sender<AppEvent> {
+fn relay(tx: Sender<AppEvent>, ctx: egui::Context, win: Window) -> Sender<AppEvent> {
     let (relay_tx, relay_rx) = channel::<AppEvent>();
     let _ = std::thread::Builder::new().name("relais".into()).spawn(move || {
         for ev in relay_rx {
             if tx.send(ev).is_err() {
                 break;
             }
+            // Fenêtre réduite : l'application ne tournerait pas pour traiter le raccourci.
+            win.unminimize();
             ctx.request_repaint();
         }
     });
