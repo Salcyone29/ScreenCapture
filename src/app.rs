@@ -199,11 +199,9 @@ impl App {
         {
             let tx = tx.clone();
             let ctx = ctx.clone();
-            let win = Window(hwnd);
             GlobalHotKeyEvent::set_event_handler(Some(move |e: GlobalHotKeyEvent| {
                 crate::debug_log(&format!("hotkey {} {:?}", e.id, e.state));
                 if e.state == HotKeyState::Pressed {
-                    win.unminimize();
                     let _ = tx.send(AppEvent::Hotkey(e.id));
                     ctx.request_repaint();
                 }
@@ -222,7 +220,7 @@ impl App {
             let snip = hotkeys.override_snip.clone();
             // Le hook clavier doit répondre en quelques millisecondes, sinon Windows le retire :
             // il ne fait que poster l'évènement, un thread relais réveille l'interface.
-            let tx = relay(tx.clone(), ctx.clone(), Window(hwnd));
+            let tx = relay(tx.clone(), ctx.clone());
             hotkeys.hook_ok = platform::install_printscreen_hook(Box::new(move |m| {
                 let kind = if m & platform::KEY_SNIP != 0 {
                     snip.load(std::sync::atomic::Ordering::SeqCst).then_some(CaptureKind::Region)
@@ -245,11 +243,11 @@ impl App {
         crate::diag::log(&format!("hook Impr. écran : {}", if hotkeys.hook_ok { "installé" } else { "indisponible" }));
         {
             let win = Window(hwnd);
+            // Interface figée : fenêtre réduite pendant la sélection, ou menu de notification resté
+            // ouvert (invisible sous la sélection plein écran).
             crate::diag::start_watchdog(&ctx, move || {
-                let restored = win.unminimize();
-                // Menu de notification resté ouvert (invisible sous la sélection plein écran…).
+                win.unminimize();
                 platform::cancel_modal_loops();
-                restored
             });
         }
         {
@@ -257,10 +255,8 @@ impl App {
             // ne répond plus, quitter pour que la nouvelle instance prenne le relais.
             let tx = tx.clone();
             let ctx = ctx.clone();
-            let win = Window(hwnd);
             platform::activation_listener(move || {
                 crate::diag::log("demande d'affichage par une nouvelle instance");
-                win.unminimize();
                 let _ = tx.send(AppEvent::TrayOpen);
                 if !crate::diag::ui_responds(&ctx, Duration::from_secs(4)) {
                     crate::diag::log(&format!("interface bloquée ({}) : arrêt pour relance", crate::diag::describe_block()));
@@ -716,13 +712,15 @@ impl App {
                 },
                 EditorAction::SaveAs => {
                     let name = ed.path.as_ref().and_then(|p| p.file_stem()).map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "Capture".into());
-                    let file = rfd::FileDialog::new()
-                        .set_directory(&self.settings.save_dir)
-                        .set_file_name(format!("{name}.png"))
-                        .add_filter("Image PNG", &["png"])
-                        .add_filter("Image JPEG", &["jpg", "jpeg"])
-                        .add_filter("Image BMP", &["bmp"])
-                        .save_file();
+                    let file = crate::diag::in_dialog(|| {
+                        rfd::FileDialog::new()
+                            .set_directory(&self.settings.save_dir)
+                            .set_file_name(format!("{name}.png"))
+                            .add_filter("Image PNG", &["png"])
+                            .add_filter("Image JPEG", &["jpg", "jpeg"])
+                            .add_filter("Image BMP", &["bmp"])
+                            .save_file()
+                    });
                     if let Some(f) = file {
                         match self.save_editor(&mut ed, Some(f)) {
                             Ok(p) => self.toast(format!("Enregistré : {}", p.display())),
@@ -994,7 +992,7 @@ impl App {
             theme::card(ui, "Enregistrement", ICON_FOLDER, |ui| {
                 theme::setting_row(ui, "Dossier des captures", &self.settings.save_dir.display().to_string(), |ui| {
                     if theme::button(ui, ButtonKind::Tonal, Some(ICON_FOLDER_OPEN), "Parcourir").clicked() {
-                        if let Some(d) = rfd::FileDialog::new().set_directory(&self.settings.save_dir).pick_folder() {
+                        if let Some(d) = crate::diag::in_dialog(|| rfd::FileDialog::new().set_directory(&self.settings.save_dir).pick_folder()) {
                             self.settings.save_dir = d;
                             self.workspace.refresh();
                             changed = true;
@@ -1124,11 +1122,10 @@ impl App {
                 };
                 theme::setting_row(ui, "FFmpeg", &desc, |ui| {
                     if theme::button(ui, ButtonKind::Tonal, Some(ICON_FOLDER_OPEN), "Choisir").clicked() {
-                        if let Some(f) = {
+                        if let Some(f) = crate::diag::in_dialog(|| {
                             let d = rfd::FileDialog::new();
-                            if cfg!(windows) { d.add_filter("ffmpeg", &["exe"]) } else { d }
-                        }
-                        .pick_file() {
+                            if cfg!(windows) { d.add_filter("ffmpeg", &["exe"]) } else { d }.pick_file()
+                        }) {
                             self.settings.ffmpeg_path = f.display().to_string();
                             changed = true;
                         }
@@ -1394,7 +1391,7 @@ impl App {
                 WsAction::OpenFolder => platform::open_folder(&self.settings.save_dir),
                 WsAction::Paste => self.paste_clipboard(),
                 WsAction::OpenFile => {
-                    if let Some(f) = rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg", "bmp", "gif"]).pick_file() {
+                    if let Some(f) = crate::diag::in_dialog(|| rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg", "bmp", "gif"]).pick_file()) {
                         match image::open(&f) {
                             Ok(img) => {
                                 let inside = f.parent() == Some(self.settings.save_dir.as_path());
@@ -1571,12 +1568,6 @@ impl eframe::App for App {
         crate::diag::heartbeat();
         self.apply_theme_if_needed(ctx);
         if std::mem::take(&mut self.park_on_start) {
-            self.hide_main();
-        }
-        // Fenêtre réduite (bouton, Win+D…) puis restaurée pour que l'application tourne :
-        // « réduire » range l'espace de travail dans la zone de notification.
-        if platform::take_was_minimized() && matches!(self.mode, Mode::Workspace | Mode::Editor) && self.visible {
-            crate::diag::log("fenêtre réduite : rangée dans la zone de notification");
             self.hide_main();
         }
         self.handle_events(ctx);
@@ -1768,15 +1759,13 @@ pub fn save_image(img: &RgbaImage, path: &Path, jpeg_quality: u8) -> anyhow::Res
 
 /// Thread relais : transmet les évènements et réveille l'interface, pour les appelants qui
 /// ne doivent jamais attendre le verrou du contexte egui (hook clavier).
-fn relay(tx: Sender<AppEvent>, ctx: egui::Context, win: Window) -> Sender<AppEvent> {
+fn relay(tx: Sender<AppEvent>, ctx: egui::Context) -> Sender<AppEvent> {
     let (relay_tx, relay_rx) = channel::<AppEvent>();
     let _ = std::thread::Builder::new().name("relais".into()).spawn(move || {
         for ev in relay_rx {
             if tx.send(ev).is_err() {
                 break;
             }
-            // Fenêtre réduite : l'application ne tournerait pas pour traiter le raccourci.
-            win.unminimize();
             ctx.request_repaint();
         }
     });

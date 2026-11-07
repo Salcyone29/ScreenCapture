@@ -117,9 +117,21 @@ pub fn ui_responds(ctx: &eframe::egui::Context, timeout: Duration) -> bool {
     false
 }
 
-/// Surveillance : changements d'écrans et blocages de l'interface. `unblock` tente de débloquer
-/// (fenêtre réduite) et renvoie `true` s'il a agi.
-pub fn start_watchdog(ctx: &eframe::egui::Context, unblock: impl Fn() -> bool + Send + 'static) {
+/// Une boîte de dialogue fichier (modale) est ouverte : l'interface attend l'utilisateur.
+static IN_DIALOG: AtomicBool = AtomicBool::new(false);
+
+/// Exécute `f`, qui ouvre une boîte de dialogue modale : la surveillance ne la prend pas pour un blocage.
+pub fn in_dialog<T>(f: impl FnOnce() -> T) -> T {
+    step("boîte de dialogue fichier");
+    IN_DIALOG.store(true, Ordering::SeqCst);
+    let r = f();
+    IN_DIALOG.store(false, Ordering::SeqCst);
+    r
+}
+
+/// Surveillance : changements d'écrans et blocages de l'interface. `unblock` tente de relancer
+/// une interface figée (fenêtre réduite, menu resté ouvert).
+pub fn start_watchdog(ctx: &eframe::egui::Context, unblock: impl Fn() + Send + 'static) {
     let ctx = ctx.clone();
     let _ = std::thread::Builder::new().name("diag-surveillance".into()).spawn(move || {
         let mut screens = crate::capture::monitors();
@@ -132,17 +144,21 @@ pub fn start_watchdog(ctx: &eframe::egui::Context, unblock: impl Fn() -> bool + 
                 log(&format!("écrans modifiés : {screens:?} -> {now:?}"));
                 screens = now;
             }
-            if !ui_responds(&ctx, Duration::from_secs(10)) {
+            let mut responds = ui_responds(&ctx, Duration::from_secs(10));
+            if !responds && IN_DIALOG.load(Ordering::SeqCst) {
+                continue;
+            }
+            if !responds {
                 let (name, _) = last_step();
                 unblock();
                 // Fenêtre restaurée ou menu fermé : l'interface repart-elle ?
-                if ui_responds(&ctx, Duration::from_secs(5)) {
+                responds = ui_responds(&ctx, Duration::from_secs(5));
+                if responds && blocked_since.is_none() {
                     log(&format!("interface débloquée automatiquement (étape « {name} »)"));
-                    blocked_since = None;
                     continue;
                 }
             }
-            if ui_responds(&ctx, Duration::from_secs(1)) {
+            if responds {
                 if let Some(since) = blocked_since.take() {
                     log(&format!("interface débloquée après {} s", (now_ms() - since) / 1000));
                 }

@@ -71,6 +71,7 @@ impl Window {
     }
 
     pub fn restore(self, s: &SavedWindow) {
+        self.unminimize();
         let Some((w, mtm)) = self.ns_window() else { return };
         w.setStyleMask(s.style);
         w.setLevel(NSNormalWindowLevel);
@@ -86,6 +87,7 @@ impl Window {
 
     /// Fenêtre sans bordure, au-dessus de tout (barre des menus comprise), placée exactement sur `r`.
     pub fn popup(self, r: Rect, exclude_from_capture: bool, activate: bool) {
+        self.unminimize();
         let Some((w, mtm)) = self.ns_window() else { return };
         w.setStyleMask(NSWindowStyleMask::Borderless);
         w.setLevel(NSStatusWindowLevel);
@@ -134,23 +136,23 @@ impl Window {
     }
 
     /// Sort la fenêtre du Dock si elle a été réduite. Renvoie `true` si elle l'était.
+    /// AppKit n'est utilisable que depuis le thread principal : ailleurs (surveillance), sans effet.
     pub fn unminimize(self) -> bool {
         let Some((w, _)) = self.ns_window() else { return false };
         if !w.isMiniaturized() {
             return false;
         }
         unsafe { w.deminiaturize(None) };
-        super::WAS_MINIMIZED.store(true, std::sync::atomic::Ordering::SeqCst);
         crate::diag::log("fenêtre réduite : restaurée");
         true
     }
 
     /// Replace la fenêtre sur un écran branché si elle est restée sur un écran débranché.
     pub fn rescue(self) {
-        if self.unminimize() {
+        let Some((w, _)) = self.ns_window() else { return };
+        if w.isMiniaturized() {
             return;
         }
-        let Some((w, _)) = self.ns_window() else { return };
         let r = from_cocoa(w.frame());
         let fit = crate::capture::fit_on_screen(r);
         if fit != r {
@@ -159,6 +161,7 @@ impl Window {
     }
 
     pub fn focus(self) {
+        self.unminimize();
         self.rescue();
         let Some((w, mtm)) = self.ns_window() else { return };
         Self::set_visible(&w, true);

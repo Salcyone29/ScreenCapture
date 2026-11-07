@@ -35,10 +35,3 @@ pub fn sc(s: &str) -> String {
 /// Nom du gestionnaire de fichiers.
 pub const FILE_MANAGER: &str = if cfg!(target_os = "macos") { "le Finder" } else { "l'Explorateur" };
 
-/// La fenêtre vient d'être sortie de l'état réduit par `Window::unminimize`.
-pub static WAS_MINIMIZED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Lit et efface l'indicateur `WAS_MINIMIZED`.
-pub fn take_was_minimized() -> bool {
-    WAS_MINIMIZED.swap(false, std::sync::atomic::Ordering::SeqCst)
-}

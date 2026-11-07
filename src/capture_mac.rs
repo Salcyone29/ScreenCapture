@@ -28,8 +28,24 @@ extern "C" {
     fn CGRectMakeWithDictionaryRepresentation(dict: CFDictionaryRef, rect: *mut CGRect) -> bool;
 }
 
-/// Pixels par point macOS : la plus grande échelle Retina des écrans branchés.
+/// Pixels par point macOS : la plus grande échelle Retina des écrans branchés. Mise en cache
+/// une seconde : la sélection la demande à chaque image (curseur, conversion en points).
 pub fn scale() -> f64 {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static CACHE: Mutex<Option<(Instant, f64)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, s)) = *cache {
+        if at.elapsed() < Duration::from_secs(1) {
+            return s;
+        }
+    }
+    let s = compute_scale();
+    *cache = Some((Instant::now(), s));
+    s
+}
+
+fn compute_scale() -> f64 {
     CGDisplay::active_displays()
         .unwrap_or_default()
         .into_iter()

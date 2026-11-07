@@ -45,16 +45,28 @@ impl Window {
         Some(Rect::new(r.left, r.top, r.right - r.left, r.bottom - r.top))
     }
 
+    /// Style et position « normaux » ; pour une fenêtre réduite, la position qu'elle retrouvera
+    /// (et non le rectangle -32000 de l'état réduit), sans le style WS_MINIMIZE.
     pub fn save(self) -> Option<SavedWindow> {
+        use windows::Win32::UI::WindowsAndMessaging::{GetWindowPlacement, IsIconic, WINDOWPLACEMENT, WS_MINIMIZE};
         if !self.is_valid() {
             return None;
         }
         unsafe {
-            Some(SavedWindow {
-                style: GetWindowLongPtrW(self.hwnd(), GWL_STYLE),
-                ex_style: GetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE),
-                rect: self.rect()?,
-            })
+            let style = GetWindowLongPtrW(self.hwnd(), GWL_STYLE) & !(WS_MINIMIZE.0 as isize);
+            let ex_style = GetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE);
+            let rect = if IsIconic(self.hwnd()).as_bool() {
+                let mut wp = WINDOWPLACEMENT { length: std::mem::size_of::<WINDOWPLACEMENT>() as u32, ..Default::default() };
+                GetWindowPlacement(self.hwnd(), &mut wp).ok()?;
+                // rcNormalPosition est en coordonnées de la zone de travail (barre des tâches exclue).
+                let n = wp.rcNormalPosition;
+                let r = Rect::new(n.left, n.top, n.right - n.left, n.bottom - n.top);
+                let (m, wa) = (crate::capture::monitor_at(r.x, r.y), crate::capture::work_area_at(r.x, r.y));
+                Rect::new(r.x + wa.x - m.x, r.y + wa.y - m.y, r.w, r.h)
+            } else {
+                self.rect()?
+            };
+            Some(SavedWindow { style, ex_style, rect })
         }
     }
 
@@ -158,29 +170,32 @@ impl Window {
         }
     }
 
-    /// Sort la fenêtre de l'état réduit (Win+D, « Afficher le bureau », clic dans la barre des
-    /// tâches…) : eframe n'exécute plus l'application tant que sa fenêtre est réduite, ce qui
-    /// bloquait captures, raccourcis et menu. Asynchrone, donc appelable depuis n'importe quel thread.
-    /// Renvoie `true` si la fenêtre était réduite.
+    /// Sort la fenêtre de l'état réduit avant de l'afficher ou de la placer : SetWindowPos ne
+    /// restaure pas une fenêtre réduite. Synchrone depuis le thread de la fenêtre (l'appel suivant
+    /// voit la fenêtre restaurée), asynchrone depuis un autre thread (surveillance), pour ne jamais
+    /// attendre un thread bloqué. Renvoie `true` si la fenêtre était réduite.
     pub fn unminimize(self) -> bool {
-        use windows::Win32::UI::WindowsAndMessaging::{IsIconic, ShowWindowAsync, SW_SHOWNOACTIVATE};
+        use windows::Win32::System::Threading::GetCurrentThreadId;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowThreadProcessId, IsIconic, ShowWindowAsync, SW_SHOWNOACTIVATE,
+        };
         if !self.is_valid() || !unsafe { IsIconic(self.hwnd()) }.as_bool() {
             return false;
         }
         unsafe {
-            let _ = ShowWindowAsync(self.hwnd(), SW_SHOWNOACTIVATE);
+            if GetWindowThreadProcessId(self.hwnd(), None) == GetCurrentThreadId() {
+                let _ = ShowWindow(self.hwnd(), SW_SHOWNOACTIVATE);
+            } else {
+                let _ = ShowWindowAsync(self.hwnd(), SW_SHOWNOACTIVATE);
+            }
         }
-        super::WAS_MINIMIZED.store(true, std::sync::atomic::Ordering::SeqCst);
         crate::diag::log("fenêtre réduite : restaurée");
         true
     }
 
     /// Replace la fenêtre sur un écran connecté si elle est restée sur un écran débranché
-    /// (sans effet si elle est garée hors écran volontairement). Appelable depuis un autre thread.
+    /// (sans effet si elle est réduite ou garée hors écran volontairement).
     pub fn rescue(self) {
-        if self.unminimize() {
-            return;
-        }
         let Some(r) = self.rect().filter(|r| r.x > -30000 && r.y > -30000) else {
             return;
         };
@@ -193,6 +208,7 @@ impl Window {
     }
 
     pub fn focus(self) {
+        self.unminimize();
         self.rescue();
         unsafe {
             let _ = ShowWindow(self.hwnd(), SW_SHOW);
