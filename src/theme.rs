@@ -471,3 +471,64 @@ pub fn swatch(ui: &mut Ui, color: Color32, selected: bool) -> Response {
     }
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
+
+/// Boîte de dialogue de confirmation Material 3 : fond assombri, icône, titre, texte et deux
+/// boutons alignés à droite. Renvoie `Some(true)` (bouton de confirmation ou Entrée),
+/// `Some(false)` (Annuler, Échap ou clic à côté) ou `None` tant que l'utilisateur n'a pas choisi.
+pub fn confirm_dialog(ctx: &egui::Context, id: &str, icon: &str, title: &str, body: &str, confirm: &str) -> Option<bool> {
+    let p = palette(ctx);
+    let id = Id::new(id);
+    let mut answer = None;
+    let (enter, esc) = ctx.input(|i| (i.key_pressed(egui::Key::Enter), i.key_pressed(egui::Key::Escape)));
+
+    egui::Area::new(id.with("scrim"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(egui::Pos2::ZERO)
+        .show(ctx, |ui| {
+            let screen = ctx.screen_rect();
+            let resp = ui.allocate_rect(screen, Sense::click());
+            ui.painter().rect_filled(screen, 0.0, Color32::from_black_alpha(if p.dark { 140 } else { 90 }));
+            if resp.clicked() {
+                answer = Some(false);
+            }
+        });
+
+    egui::Area::new(id)
+        .order(egui::Order::Tooltip)
+        .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+        .show(ctx, |ui| {
+            egui::Frame::new()
+                .fill(p.surface_high)
+                .corner_radius(CornerRadius::same(28))
+                .inner_margin(Margin::same(24))
+                .shadow(Shadow { offset: [0, 6], blur: 24, spread: 0, color: Color32::from_black_alpha(70) })
+                .show(ui, |ui| {
+                    ui.set_width(340.0);
+                    ui.vertical_centered(|ui| {
+                        ui.label(egui::RichText::new(icon).size(26.0).color(p.error));
+                        ui.add_space(12.0);
+                        ui.label(egui::RichText::new(title).font(medium(22.0)).color(p.on_surface));
+                    });
+                    ui.add_space(14.0);
+                    ui.label(egui::RichText::new(body).size(14.0).color(p.on_surface_variant));
+                    ui.add_space(24.0);
+                    // Hauteur fixe : une mise en page droite-à-gauche prendrait toute la hauteur restante.
+                    ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), 40.0), egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.spacing_mut().item_spacing.x = 8.0;
+                        if button(ui, ButtonKind::Danger, None, confirm).on_hover_text("Entrée").clicked() {
+                            answer = Some(true);
+                        }
+                        if button(ui, ButtonKind::Text, None, "Annuler").on_hover_text("Échap").clicked() {
+                            answer = Some(false);
+                        }
+                    });
+                });
+        });
+
+    if enter {
+        answer = Some(true);
+    } else if esc {
+        answer = Some(false);
+    }
+    answer
+}

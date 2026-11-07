@@ -10,7 +10,7 @@ use egui_material_icons::icons::*;
 
 use crate::app::CaptureKind;
 use crate::settings::Settings;
-use crate::theme::{self, palette, ButtonKind};
+use crate::theme::{self, palette};
 
 pub const IMAGE_EXT: [&str; 5] = ["png", "jpg", "jpeg", "bmp", "gif"];
 const VIDEO_EXT: [&str; 3] = ["mp4", "webm", "mkv"];
@@ -52,6 +52,8 @@ pub struct Workspace {
     filter: Filter,
     search: String,
     confirm_delete: Option<PathBuf>,
+    /// Capture sélectionnée d'un clic (Suppr la supprime).
+    selected: Option<PathBuf>,
 }
 
 impl Workspace {
@@ -81,6 +83,7 @@ impl Workspace {
             filter: Filter::All,
             search: String::new(),
             confirm_delete: None,
+            selected: None,
         }
     }
 
@@ -89,6 +92,9 @@ impl Workspace {
     }
 
     pub fn forget(&mut self, path: &Path) {
+        if self.selected.as_deref() == Some(path) {
+            self.selected = None;
+        }
         self.thumbs.remove(path);
         self.pending.remove(path);
         self.refresh();
@@ -242,6 +248,10 @@ impl Workspace {
                 return;
             }
 
+            // Sélection masquée par un filtre ou une recherche : on l'oublie.
+            if self.selected.as_ref().is_some_and(|s| !visible.iter().any(|&i| &self.items[i].path == s)) {
+                self.selected = None;
+            }
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = vec2(14.0, 14.0);
                 for i in visible {
@@ -251,26 +261,23 @@ impl Workspace {
             ui.add_space(24.0);
         });
 
+        // Suppr : supprimer la capture sélectionnée (après confirmation) ; Échap : désélectionner.
+        let ctx = ui.ctx().clone();
+        if self.confirm_delete.is_none() && !ctx.wants_keyboard_input() {
+            let (del, esc) = ctx.input(|i| (i.key_pressed(egui::Key::Delete), i.key_pressed(egui::Key::Escape)));
+            if del {
+                self.confirm_delete = self.selected.clone();
+            } else if esc {
+                self.selected = None;
+            }
+        }
+
         if let Some(path) = self.confirm_delete.clone() {
-            let mut keep_open = true;
-            egui::Window::new("Supprimer la capture ?")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(Align2::CENTER_CENTER, egui::Vec2::ZERO)
-                .show(ui.ctx(), |ui| {
-                    ui.label(format!("« {} » sera envoyé dans la Corbeille.", path.file_name().unwrap_or_default().to_string_lossy()));
-                    ui.add_space(16.0);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if theme::button(ui, ButtonKind::Danger, Some(ICON_DELETE), "Supprimer").clicked() {
-                            actions.push(WsAction::Delete(path.clone()));
-                            keep_open = false;
-                        }
-                        if theme::button(ui, ButtonKind::Text, None, "Annuler").clicked() {
-                            keep_open = false;
-                        }
-                    });
-                });
-            if !keep_open {
+            let body = format!("« {} » sera envoyé dans la Corbeille.", path.file_name().unwrap_or_default().to_string_lossy());
+            if let Some(ok) = theme::confirm_dialog(&ctx, "confirm_delete", ICON_DELETE, "Supprimer la capture ?", &body, "Supprimer") {
+                if ok {
+                    actions.push(WsAction::Delete(path));
+                }
                 self.confirm_delete = None;
             }
         }
@@ -290,12 +297,18 @@ impl Workspace {
             self.pending.insert(path.clone());
             let _ = self.req_tx.send(path.clone());
         }
+        if resp.clicked() || resp.secondary_clicked() {
+            self.selected = Some(path.clone());
+        }
+        let selected = self.selected.as_ref() == Some(&path);
         let painter = ui.painter();
         let hovered = resp.hovered();
         if hovered {
             painter.rect_filled(rect.translate(vec2(0.0, 2.0)), 12.0, Color32::from_black_alpha(35));
         }
-        painter.rect(rect, 12.0, if hovered { p.surface_high } else { p.surface_low }, Stroke::new(1.0_f32, p.outline_variant), StrokeKind::Inside);
+        let border = if selected { Stroke::new(2.5_f32, p.primary) } else { Stroke::new(1.0_f32, p.outline_variant) };
+        let fill = if selected { p.secondary_container } else if hovered { p.surface_high } else { p.surface_low };
+        painter.rect(rect, 12.0, fill, border, StrokeKind::Inside);
         let thumb_area = Rect::from_min_size(rect.min + vec2(8.0, 8.0), vec2(size.x - 16.0, 124.0));
         painter.rect_filled(thumb_area, 8.0, p.surface_highest);
         if let Some(tex) = self.thumbs.get(&path) {

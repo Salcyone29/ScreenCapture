@@ -131,6 +131,8 @@ pub struct Settings {
     pub effect_border_color: [u8; 4],
     pub effect_shadow: bool,
     pub number_format: NumberFormat,
+    /// Journal de diagnostic (activé par un triple-clic sur la version, page « À propos »).
+    pub diagnostic: bool,
     /// Nuancier de l'éditeur, modifiable dans les Paramètres.
     pub palette: Vec<[u8; 4]>,
 }
@@ -167,6 +169,7 @@ impl Default for Settings {
             effect_border_color: [80, 80, 80, 255],
             effect_shadow: false,
             number_format: NumberFormat::Decimal,
+            diagnostic: false,
             palette: COLORS.to_vec(),
         }
     }

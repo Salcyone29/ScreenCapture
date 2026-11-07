@@ -36,6 +36,7 @@ fn main() -> eframe::Result<()> {
         return Ok(());
     }
     let settings = settings::Settings::load();
+    diag::set_enabled(settings.diagnostic);
     let start_hidden = settings.start_in_tray || from_startup;
     let icon = egui::IconData { rgba: icon::app_icon(64), width: 64, height: 64 };
     let options = eframe::NativeOptions {

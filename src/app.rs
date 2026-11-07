@@ -1187,20 +1187,27 @@ impl App {
             });
             ui.add_space(12.0);
 
-            theme::card(ui, "Diagnostic", ICON_BUG_REPORT, |ui| {
-                let path = crate::diag::log_path();
-                theme::setting_row(ui, "Journal de diagnostic", &path.display().to_string(), |ui| {
-                    if theme::button(ui, ButtonKind::Tonal, Some(ICON_FOLDER_OPEN), "Ouvrir le dossier").clicked() {
-                        platform::open_folder(&crate::diag::log_dir());
-                    }
+            // Carte cachée tant que le diagnostic n'a pas été activé (triple-clic sur la version).
+            if self.settings.diagnostic {
+                theme::card(ui, "Diagnostic", ICON_BUG_REPORT, |ui| {
+                    let path = crate::diag::log_path();
+                    theme::setting_row(ui, "Journal de diagnostic", &path.display().to_string(), |ui| {
+                        if theme::switch(ui, &mut self.settings.diagnostic).changed() {
+                            crate::diag::set_enabled(self.settings.diagnostic);
+                            changed = true;
+                        }
+                        if theme::button(ui, ButtonKind::Tonal, Some(ICON_FOLDER_OPEN), "Ouvrir le dossier").clicked() {
+                            platform::open_folder(&crate::diag::log_dir());
+                        }
+                    });
+                    ui.label(
+                        egui::RichText::new("En cas de blocage, relancer ScreenCapture depuis le menu Démarrer remplace l'instance bloquée ; le journal indique alors l'étape en cause. Désactiver le journal masque cette section (triple-clic sur la version, page « À propos », pour la retrouver).")
+                            .size(12.0)
+                            .color(p.on_surface_variant),
+                    );
                 });
-                ui.label(
-                    egui::RichText::new("En cas de blocage, relancer ScreenCapture depuis le menu Démarrer remplace l'instance bloquée ; le journal indique alors l'étape en cause.")
-                        .size(12.0)
-                        .color(p.on_surface_variant),
-                );
-            });
-            ui.add_space(12.0);
+                ui.add_space(12.0);
+            }
 
             theme::card(ui, "Couleurs de l'éditeur", ICON_COLOR_LENS, |ui| {
                 changed |= self.palette_editor(ui);
@@ -1345,7 +1352,18 @@ impl App {
         let p = palette(ctx);
         ui.add_space(8.0);
         ui.label(egui::RichText::new("ScreenCapture").font(theme::medium(28.0)).color(p.on_surface));
-        ui.label(egui::RichText::new(format!("Version {}  •  Rust + egui  •  Material Design 3", env!("CARGO_PKG_VERSION"))).color(p.on_surface_variant));
+        // Triple-clic sur la version : active le journal de diagnostic.
+        let version = ui.add(
+            egui::Label::new(egui::RichText::new(format!("Version {}  •  Rust + egui  •  Material Design 3", env!("CARGO_PKG_VERSION"))).color(p.on_surface_variant))
+                .sense(egui::Sense::click())
+                .selectable(false),
+        );
+        if version.triple_clicked() && !self.settings.diagnostic {
+            self.settings.diagnostic = true;
+            self.settings.save();
+            crate::diag::set_enabled(true);
+            self.toast("Journal de diagnostic activé (Paramètres → Diagnostic)");
+        }
         ui.add_space(16.0);
         theme::card(ui, "Fonctionnalités", ICON_STARS, |ui| {
             for (icon, text) in [

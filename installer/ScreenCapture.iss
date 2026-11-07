@@ -2,7 +2,7 @@
 ; Compilé par build-installer.ps1, qui fournit AppVersion depuis Cargo.toml.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.9"
+  #define AppVersion "0.1.10"
 #endif
 #define AppName "ScreenCapture"
 #define AppExe "ScreenCapture.exe"

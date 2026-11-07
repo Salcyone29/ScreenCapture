@@ -37,24 +37,10 @@ pub fn log_path() -> PathBuf {
     log_dir().join("screencapture.log")
 }
 
-/// Ouvre le journal et enregistre les plantages (panic), y compris ceux des threads de travail.
+/// Démarre l'horloge du diagnostic et enregistre les plantages (panic) dans le journal quand
+/// celui-ci est activé, y compris ceux des threads de travail.
 pub fn init() {
     let _ = START.set(Instant::now());
-    let dir = log_dir();
-    let _ = std::fs::create_dir_all(&dir);
-    let path = log_path();
-    if std::fs::metadata(&path).map(|m| m.len() > MAX_SIZE).unwrap_or(false) {
-        let _ = std::fs::rename(&path, dir.join("screencapture.old.log"));
-    }
-    if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
-        *FILE.lock().unwrap_or_else(|e| e.into_inner()) = Some(f);
-    }
-    log(&format!(
-        "===== ScreenCapture {} démarré ({} {}) =====",
-        env!("CARGO_PKG_VERSION"),
-        std::env::consts::OS,
-        std::env::consts::ARCH
-    ));
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let thread = std::thread::current();
@@ -67,7 +53,34 @@ pub fn init() {
     }));
 }
 
-/// Ajoute une ligne horodatée au journal.
+/// Active ou désactive l'écriture du journal (réglage « Journal de diagnostic », désactivé par
+/// défaut). Sans journal, la surveillance continue de débloquer l'interface, sans rien écrire.
+pub fn set_enabled(enabled: bool) {
+    let mut file = FILE.lock().unwrap_or_else(|e| e.into_inner());
+    if enabled == file.is_some() {
+        return;
+    }
+    if !enabled {
+        *file = None;
+        return;
+    }
+    let dir = log_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let path = log_path();
+    if std::fs::metadata(&path).map(|m| m.len() > MAX_SIZE).unwrap_or(false) {
+        let _ = std::fs::rename(&path, dir.join("screencapture.old.log"));
+    }
+    *file = std::fs::OpenOptions::new().create(true).append(true).open(&path).ok();
+    drop(file);
+    log(&format!(
+        "===== ScreenCapture {} : journal activé ({} {}) =====",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    ));
+}
+
+/// Ajoute une ligne horodatée au journal (sans effet si le journal est désactivé).
 pub fn log(msg: &str) {
     let line = format!("{} [{}] {msg}\n", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"), std::thread::current().name().unwrap_or("?"));
     if let Ok(mut guard) = FILE.lock() {
