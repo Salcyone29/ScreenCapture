@@ -2,7 +2,7 @@
 ; Compilé par build-installer.ps1, qui fournit AppVersion depuis Cargo.toml.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.11"
+  #define AppVersion "0.1.12"
 #endif
 #define AppName "ScreenCapture"
 #define AppExe "ScreenCapture.exe"
@@ -90,6 +90,8 @@ Name: "ffmpeg"; Description: "{cm:FfmpegTask}"; GroupDescription: "{cm:FfmpegGro
 
 [Files]
 Source: "..\target\release\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\THIRD-PARTY-LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"

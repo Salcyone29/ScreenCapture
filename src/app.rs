@@ -301,6 +301,8 @@ pub struct App {
     menu_ids: HashMap<String, &'static str>,
     snackbar: Option<(String, Instant)>,
     ocr_text: Option<String>,
+    /// Texte de licence affiché (page À propos) : titre et lignes.
+    license_view: Option<(&'static str, Vec<&'static str>)>,
     busy: bool,
     /// Début de la capture en cours, pour ne jamais rester bloqué en « occupé ».
     busy_since: Instant,
@@ -487,6 +489,7 @@ impl App {
             menu_ids,
             snackbar: None,
             ocr_text: None,
+            license_view: None,
             busy: false,
             busy_since: Instant::now(),
             capture_cancelled: false,
@@ -1698,6 +1701,24 @@ impl App {
             }
         });
         ui.add_space(12.0);
+        theme::card(ui, crate::i18n::tr("Licence"), ICON_GAVEL, |ui| {
+            ui.label(crate::i18n::tr(
+                "ScreenCapture est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence GNU GPL, version 3 ou ultérieure. Il est fourni sans aucune garantie.",
+            ));
+            ui.add_space(8.0);
+            ui.horizontal_wrapped(|ui| {
+                if theme::button(ui, ButtonKind::Tonal, Some(ICON_DESCRIPTION), crate::i18n::tr("Licence GPL-3.0")).clicked() {
+                    self.license_view = Some((crate::i18n::tr("Licence GPL-3.0"), LICENSE_TEXT.lines().collect()));
+                }
+                if theme::button(ui, ButtonKind::Tonal, Some(ICON_LIBRARY_BOOKS), crate::i18n::tr("Composants tiers")).clicked() {
+                    self.license_view = Some((crate::i18n::tr("Composants tiers"), THIRD_PARTY_TEXT.lines().collect()));
+                }
+                if theme::button(ui, ButtonKind::Text, Some(ICON_CODE), crate::i18n::tr("Code source")).on_hover_text(SOURCE_URL).clicked() {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(SOURCE_URL));
+                }
+            });
+        });
+        ui.add_space(12.0);
         ui.label(
             egui::RichText::new(
                 crate::i18n::tr("Inspiré de l'ergonomie de Screenpresso, de l'Outil Capture d'écran de Windows, de Greenshot et d'autres outils de capture. Aucune partie de leur code n'est réutilisée."),
@@ -2126,6 +2147,39 @@ impl App {
         ctx.request_repaint_after(Duration::from_millis(250));
     }
 
+    /// Texte de licence (GPL ou composants tiers), affiché ligne par ligne : plusieurs milliers
+    /// de lignes, seules celles visibles sont dessinées.
+    fn license_dialog(&mut self, ctx: &egui::Context) {
+        let Some((title, lines)) = &self.license_view else { return };
+        let mut open = true;
+        let mut close = false;
+        let screen = ctx.screen_rect();
+        egui::Window::new(*title)
+            .collapsible(false)
+            .resizable(false)
+            .fixed_size([(screen.width() - 80.0).min(760.0), (screen.height() - 160.0).max(200.0)])
+            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+            .open(&mut open)
+            .show(ctx, |ui| {
+                let font = FontId::monospace(12.0);
+                let row = ui.fonts(|f| f.row_height(&font));
+                egui::ScrollArea::both().auto_shrink([false; 2]).max_height(ui.available_height() - 48.0).show_rows(ui, row, lines.len(), |ui, range| {
+                    for line in &lines[range] {
+                        ui.label(egui::RichText::new(*line).font(font.clone()));
+                    }
+                });
+                ui.add_space(8.0);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if theme::button(ui, ButtonKind::Text, None, crate::i18n::tr("Fermer")).clicked() {
+                        close = true;
+                    }
+                });
+            });
+        if !open || close {
+            self.license_view = None;
+        }
+    }
+
     fn ocr_dialog(&mut self, ctx: &egui::Context) {
         let Some(mut text) = self.ocr_text.clone() else { return };
         let mut open = true;
@@ -2258,6 +2312,7 @@ impl eframe::App for App {
         }
 
         self.ocr_dialog(ctx);
+        self.license_dialog(ctx);
         self.snackbar_ui(ctx);
         if self.finishing_video {
             ctx.request_repaint_after(Duration::from_millis(500));
@@ -2305,6 +2360,11 @@ fn tray_menu(ids: &mut HashMap<String, &'static str>, settings: &Settings) -> an
 fn tray_tooltip(settings: &Settings) -> String {
     crate::i18n::trf("ScreenCapture — {0} pour capturer", &[&pretty_hotkey(&settings.hotkeys.region)])
 }
+
+/// Licence de ScreenCapture et mentions des composants tiers (intégrées au programme).
+const LICENSE_TEXT: &str = include_str!("../LICENSE");
+const THIRD_PARTY_TEXT: &str = include_str!("../THIRD-PARTY-LICENSES.txt");
+const SOURCE_URL: &str = "https://github.com/Salcyone29/ScreenCapture";
 
 fn build_tray(ids: &mut HashMap<String, &'static str>, settings: &Settings) -> anyhow::Result<TrayIcon> {
     let menu = tray_menu(ids, settings)?;

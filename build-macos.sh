@@ -33,6 +33,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/ScreenCapture"
 cp assets/ScreenCapture.icns "$APP/Contents/Resources/"
+cp LICENSE THIRD-PARTY-LICENSES.txt "$APP/Contents/Resources/"
 sed "s/@VERSION@/$VERSION/g" installer/macos/Info.plist > "$APP/Contents/Info.plist"
 
 codesign --force --deep --sign "${MACOS_SIGN_IDENTITY:--}" "$APP"
@@ -40,6 +41,7 @@ codesign --force --deep --sign "${MACOS_SIGN_IDENTITY:--}" "$APP"
 STAGE=$(mktemp -d)
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
+cp LICENSE "$STAGE/LICENSE.txt"
 rm -f "$DMG"
 hdiutil create -volname "ScreenCapture $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
 rm -rf "$STAGE"

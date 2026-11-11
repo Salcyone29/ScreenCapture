@@ -67,3 +67,9 @@ Le rapport `RAPPORT.md` est écrit dans le dossier indiqué. Les réglages de l'
 ## Compilation automatique
 
 Le workflow GitHub Actions `Build` compile l'installeur Windows et le `.dmg` macOS : lancement manuel depuis l'onglet Actions, ou automatique à chaque tag `vX.Y.Z`, qui joint les fichiers à la Release.
+
+## Licence
+
+ScreenCapture est un logiciel libre, distribué sous licence **GNU GPL version 3 ou ultérieure** (fichier [`LICENSE`](LICENSE)) : chacun peut l'utiliser, l'étudier, le modifier et le redistribuer, à condition que toute version redistribuée reste sous la même licence, avec son code source. Il est fourni sans aucune garantie.
+
+Les bibliothèques utilisées ont leurs propres licences (MIT, Apache-2.0, BSD, Zlib…), toutes compatibles avec la GPL-3.0 ; leurs mentions sont réunies dans [`THIRD-PARTY-LICENSES.txt`](THIRD-PARTY-LICENSES.txt), joint à l'installeur, au `.dmg` et consultable depuis la page « À propos ». Après un changement de dépendances, le régénérer avec `python tools/third_party_licenses.py`. FFmpeg, installé à part pour la vidéo, reste sous sa propre licence (GPL / LGPL).

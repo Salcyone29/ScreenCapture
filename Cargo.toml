@@ -1,7 +1,9 @@
 [package]
 name = "screencapture"
-version = "0.1.11"
+version = "0.1.12"
 edition = "2021"
+license = "GPL-3.0-or-later"
+authors = ["Stéphane Salou"]
 description = "Outil de capture d'écran et d'annotation en Rust avec un design Material 3 (Windows et macOS)"
 
 [[bin]]

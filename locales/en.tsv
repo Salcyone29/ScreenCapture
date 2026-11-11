@@ -76,7 +76,9 @@ Cliquer pour prélever une couleur	Click to pick a color
 Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer	Click to select • Drag to move • Del to delete
 Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider	Click to type • Ctrl+Enter or Esc to confirm
 Cliquer pour écrire • ⌘Entrée ou Échap pour valider	Click to type • ⌘Return or Esc to confirm
+Code source	Source code
 Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)	Paste the clipboard image into the captures folder (Ctrl+V)
+Composants tiers	Third-party components
 Conservation : rien à supprimer	Retention: nothing to delete
 Conservation : {0}	Retention: {0}
 Conservation : {0} {1}	Retention: {0} {1}
@@ -188,6 +190,8 @@ Langue	Language
 Le presse-papiers ne contient pas d'image	The clipboard contains no image
 Le texte a été copié dans le presse-papiers.	The text has been copied to the clipboard.
 Les {0} captures sélectionnées seront envoyées dans la Corbeille.	The {0} selected captures will be moved to the Recycle Bin.
+Licence	License
+Licence GPL-3.0	GPL-3.0 license
 Ligne (L)	Line (L)
 Lire	Play
 Loupe (M)	Magnifier (M)
@@ -262,6 +266,7 @@ Saisissez votre texte…	Type your text…
 Sans le son  •  M pour l'activer	No sound  •  M to turn it on
 Sans le son  •  aucun micro choisi dans les Paramètres	No sound  •  no microphone chosen in Settings
 Sans le son : aucun micro choisi dans les Paramètres (ou GIF)	No sound: no microphone chosen in Settings (or GIF)
+ScreenCapture est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence GNU GPL, version 3 ou ultérieure. Il est fourni sans aucune garantie.	ScreenCapture is free software: you can redistribute it and modify it under the terms of the GNU GPL, version 3 or later. It comes with no warranty.
 ScreenCapture — {0} pour capturer	ScreenCapture — {0} to capture
 Seuls les fichiers créés par ScreenCapture (Capture_…, Video_…, Collage_…) sont concernés. Les captures épinglées ({0} sur une vignette) et celle ouverte dans l'éditeur ne sont jamais supprimées. L'âge se compte depuis la création du fichier.	Only files created by ScreenCapture (Capture_…, Video_…, Collage_…) are affected. Pinned captures ({0} on a thumbnail) and the one open in the editor are never deleted. Age is counted from the file's creation.
 Sombre	Dark

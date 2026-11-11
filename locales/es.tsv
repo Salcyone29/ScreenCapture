@@ -76,7 +76,9 @@ Cliquer pour prélever une couleur	Haga clic para tomar un color
 Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer	Clic para seleccionar • Arrastrar para mover • Supr para borrar
 Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider	Clic para escribir • Ctrl+Intro o Esc para validar
 Cliquer pour écrire • ⌘Entrée ou Échap pour valider	Clic para escribir • ⌘Intro o Esc para validar
+Code source	Código fuente
 Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)	Pegar la imagen del portapapeles en la carpeta de capturas (Ctrl+V)
+Composants tiers	Componentes de terceros
 Conservation : rien à supprimer	Conservación: nada que eliminar
 Conservation : {0}	Conservación: {0}
 Conservation : {0} {1}	Conservación: {0} {1}
@@ -188,6 +190,8 @@ Langue	Idioma
 Le presse-papiers ne contient pas d'image	El portapapeles no contiene ninguna imagen
 Le texte a été copié dans le presse-papiers.	El texto se ha copiado al portapapeles.
 Les {0} captures sélectionnées seront envoyées dans la Corbeille.	Las {0} capturas seleccionadas se enviarán a la Papelera.
+Licence	Licencia
+Licence GPL-3.0	Licencia GPL-3.0
 Ligne (L)	Línea (L)
 Lire	Reproducir
 Loupe (M)	Lupa (M)
@@ -262,6 +266,7 @@ Saisissez votre texte…	Escriba su texto…
 Sans le son  •  M pour l'activer	Sin sonido  •  M para activarlo
 Sans le son  •  aucun micro choisi dans les Paramètres	Sin sonido  •  ningún micrófono elegido en Ajustes
 Sans le son : aucun micro choisi dans les Paramètres (ou GIF)	Sin sonido: ningún micrófono elegido en Ajustes (o GIF)
+ScreenCapture est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence GNU GPL, version 3 ou ultérieure. Il est fourni sans aucune garantie.	ScreenCapture es software libre: puede redistribuirlo y modificarlo según los términos de la licencia GNU GPL, versión 3 o posterior. Se proporciona sin ninguna garantía.
 ScreenCapture — {0} pour capturer	ScreenCapture — {0} para capturar
 Seuls les fichiers créés par ScreenCapture (Capture_…, Video_…, Collage_…) sont concernés. Les captures épinglées ({0} sur une vignette) et celle ouverte dans l'éditeur ne sont jamais supprimées. L'âge se compte depuis la création du fichier.	Solo se ven afectados los archivos creados por ScreenCapture (Capture_…, Video_…, Collage_…). Las capturas ancladas ({0} en una miniatura) y la abierta en el editor nunca se eliminan. La antigüedad se cuenta desde la creación del archivo.
 Sombre	Oscuro

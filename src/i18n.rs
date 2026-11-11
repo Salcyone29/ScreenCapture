@@ -157,12 +157,17 @@ mod tests {
                 continue;
             }
             let src = std::fs::read_to_string(&p).unwrap();
-            for marker in ["tr(\"", "trf(\""] {
+            for marker in ["tr(", "trf("] {
                 let mut rest = src.as_str();
                 while let Some(i) = rest.find(marker) {
-                    // `tr(` doit être un appel isolé (pas la fin d'un autre nom).
+                    // `tr(` doit être un appel isolé (pas la fin d'un autre nom), suivi d'un
+                    // texte littéral, éventuellement à la ligne suivante.
                     let before = rest[..i].chars().last();
-                    let after = &rest[i + marker.len()..];
+                    let open = rest[i + marker.len()..].trim_start();
+                    let Some(after) = open.strip_prefix('"') else {
+                        rest = &rest[i + marker.len()..];
+                        continue;
+                    };
                     let mut key = String::new();
                     let mut chars = after.char_indices();
                     let mut end = after.len();
