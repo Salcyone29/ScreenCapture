@@ -5,6 +5,7 @@ use eframe::egui::{
     self, pos2, vec2, Align2, Color32, ColorImage, CornerRadius, FontId, Key, Pos2, Rect as ERect, Stroke, StrokeKind,
     TextureHandle, TextureOptions,
 };
+use egui_material_icons::icons::{ICON_MIC, ICON_MIC_OFF};
 use image::RgbaImage;
 
 use crate::capture::{self, Rect, WindowInfo};
@@ -32,10 +33,16 @@ pub struct Overlay {
     windows: Vec<WindowInfo>,
     monitors: Vec<Rect>,
     drag_start: Option<(i32, i32)>,
-    current: Option<Rect>,
+    pub current: Option<Rect>,
     mag: Option<TextureHandle>,
     /// Afficher la loupe de précision (réglage « Loupe de précision »).
     pub magnifier: bool,
+    /// Vidéo : enregistrer le son (`None` : aucun micro choisi ou GIF, sans son).
+    pub audio: Option<bool>,
+    /// Bouton « avec / sans le son » (points), pour savoir si un clic le vise.
+    audio_chip: Option<ERect>,
+    /// Emplacement du bandeau d'aide (« haut », « bas » ou « masqué »), pour le journal.
+    pub help_position: &'static str,
     frames: u32,
 }
 
@@ -55,6 +62,9 @@ impl Overlay {
             current: None,
             mag: None,
             magnifier: true,
+            audio: None,
+            audio_chip: None,
+            help_position: "haut",
             frames: 0,
         }
     }
@@ -90,7 +100,7 @@ impl Overlay {
         let rect_pt = |r: Rect| ERect::from_min_max(to_pt(r.x, r.y), to_pt(r.x + r.w, r.y + r.h));
 
         let mut result = OverlayResult::Pending;
-        let (pressed, released, down, esc, enter, key_c, right) = ctx.input(|i| {
+        let (pressed, released, down, esc, enter, key_c, right, key_m, click_pos, press_origin) = ctx.input(|i| {
             (
                 i.pointer.primary_pressed(),
                 i.pointer.primary_released(),
@@ -99,8 +109,18 @@ impl Overlay {
                 i.key_pressed(Key::Enter),
                 i.key_pressed(Key::C),
                 i.pointer.secondary_clicked(),
+                i.key_pressed(Key::M),
+                i.pointer.interact_pos(),
+                i.pointer.press_origin(),
             )
         });
+        // Vidéo : M ou un clic sur le bouton bascule l'enregistrement du son.
+        let on_audio_chip = pressed && click_pos.is_some_and(|p| self.audio_chip.is_some_and(|c| c.contains(p)));
+        if let Some(a) = self.audio.as_mut() {
+            if key_m || on_audio_chip {
+                *a = !*a;
+            }
+        }
         // Position lue auprès du système : celle d'egui date d'avant l'affichage de la sélection
         // (fenêtre de l'espace de travail ou garée hors écran) tant que la souris n'a pas bougé,
         // ce qui faisait apparaître la loupe ailleurs pendant les premières images.
@@ -117,9 +137,14 @@ impl Overlay {
             return OverlayResult::CopyColor(format!("#{:02X}{:02X}{:02X}", c[0], c[1], c[2]));
         }
         // Ignore les toutes premières images (relâchement éventuel d'un clic de menu).
-        if self.frames > 2 {
+        if self.frames > 2 && !on_audio_chip {
             if pressed {
-                self.drag_start = Some(cursor);
+                // Point exact du clic (et non la position du pointeur au moment de dessiner, déjà
+                // plus loin si la souris bouge vite).
+                self.drag_start = Some(match press_origin {
+                    Some(p) => (self.origin.x + (p.x * ppp).round() as i32, self.origin.y + (p.y * ppp).round() as i32),
+                    None => cursor,
+                });
             }
             if down {
                 if let Some(s) = self.drag_start {
@@ -185,14 +210,55 @@ impl Overlay {
             // Bandeau d'aide (en haut du moniteur courant).
             let mon = rect_pt(self.monitor_at(cursor.0, cursor.1));
             let help = match self.purpose {
-                Purpose::Image => "Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler",
-                Purpose::Video => "Sélectionnez la zone à enregistrer  •  Clic : fenêtre  •  Entrée : écran entier  •  Échap : annuler",
+                Purpose::Image => crate::i18n::tr("Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler"),
+                Purpose::Video => crate::i18n::tr("Sélectionnez la zone à enregistrer  •  Clic : fenêtre  •  Entrée : écran entier  •  Échap : annuler"),
             };
             let g = painter.layout_no_wrap(help.to_string(), FontId::proportional(13.5), p.inverse_on_surface);
-            let bar = ERect::from_center_size(pos2(mon.center().x, mon.top() + 36.0), g.size() + vec2(36.0, 18.0));
+            // Le bandeau (et le bouton du son) ne doit pas cacher ce qu'on vise : en haut de l'écran,
+            // en bas si le pointeur ou la zone en cours de sélection est dessous, masqué si les deux
+            // emplacements sont pris.
+            let block_h = if self.purpose == Purpose::Video { 92.0 } else { 52.0 };
+            let avoid: Vec<ERect> = std::iter::once(ERect::from_center_size(c, vec2(48.0, 48.0)))
+                .chain(self.current.map(|r| rect_pt(r).expand(12.0)))
+                .collect();
+            let free = |top: f32| {
+                let zone = ERect::from_min_max(pos2(mon.left(), top), pos2(mon.right(), top + block_h));
+                !avoid.iter().any(|a| a.intersects(zone))
+            };
+            let top = [mon.top() + 14.0, mon.bottom() - block_h - 60.0].into_iter().find(|&t| free(t));
+            self.audio_chip = None;
+            self.help_position = match top {
+                None => "masqué",
+                Some(t) if t > mon.center().y => "bas",
+                Some(_) => "haut",
+            };
+            let Some(top) = top else {
+                if self.magnifier {
+                    self.paint_magnifier(ctx, painter, cursor, c, full);
+                }
+                return;
+            };
+            let bar = ERect::from_min_size(pos2(mon.center().x - (g.size().x + 36.0) / 2.0, top + 4.0), g.size() + vec2(36.0, 18.0));
             painter.rect_filled(bar.translate(vec2(0.0, 2.0)), 22.0, Color32::from_black_alpha(60));
             painter.rect_filled(bar, 22.0, p.inverse_surface);
             painter.galley(bar.min + vec2(18.0, 9.0), g, p.inverse_on_surface);
+
+            // Vidéo : bouton « avec / sans le son » sous le bandeau d'aide.
+            if self.purpose == Purpose::Video {
+                let (icon, text, fill, fg) = match self.audio {
+                    Some(true) => (ICON_MIC, crate::i18n::tr("Avec le son  •  M pour couper"), accent, Color32::WHITE),
+                    Some(false) => (ICON_MIC_OFF, crate::i18n::tr("Sans le son  •  M pour l'activer"), p.inverse_surface, p.inverse_on_surface),
+                    None => (ICON_MIC_OFF, crate::i18n::tr("Sans le son  •  aucun micro choisi dans les Paramètres"), p.inverse_surface, p.inverse_on_surface),
+                };
+                let g = painter.layout_no_wrap(format!("{icon}  {text}"), FontId::proportional(13.5), fg);
+                let chip = ERect::from_center_size(pos2(mon.center().x, bar.bottom() + 28.0), g.size() + vec2(32.0, 16.0));
+                painter.rect_filled(chip.translate(vec2(0.0, 2.0)), 20.0, Color32::from_black_alpha(60));
+                painter.rect_filled(chip, 20.0, fill);
+                painter.galley(chip.min + vec2(16.0, 8.0), g, fg);
+                if self.audio.is_some() {
+                    self.audio_chip = Some(chip);
+                }
+            }
 
             if self.magnifier {
                 self.paint_magnifier(ctx, painter, cursor, c, full);

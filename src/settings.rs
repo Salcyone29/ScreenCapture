@@ -126,6 +126,20 @@ pub struct Settings {
     pub video_show_region: bool,
     pub video_cursor: bool,
     pub audio_device: Option<String>,
+    /// Enregistrer le son du micro avec les vidéos (modifiable au moment de choisir la zone).
+    pub record_audio: bool,
+    /// Conservation : images supprimées après ce nombre de jours (0 = jamais).
+    pub retention_images_days: u32,
+    /// Conservation : vidéos supprimées après ce nombre de jours (0 = jamais).
+    pub retention_videos_days: u32,
+    /// Taille maximale du dossier des captures en Mo (0 = sans limite) : les plus anciennes partent.
+    pub retention_max_mb: u64,
+    /// Suppression vers la Corbeille (récupérable) plutôt que définitive.
+    pub retention_to_trash: bool,
+    /// Captures épinglées (noms de fichiers) : jamais supprimées automatiquement.
+    pub pinned: Vec<String>,
+    /// Langue de l'interface.
+    pub language: crate::i18n::Language,
     pub effect_border: bool,
     pub effect_border_width: u32,
     pub effect_border_color: [u8; 4],
@@ -164,6 +178,13 @@ impl Default for Settings {
             video_show_region: true,
             video_cursor: true,
             audio_device: None,
+            record_audio: true,
+            retention_images_days: 0,
+            retention_videos_days: 0,
+            retention_max_mb: 0,
+            retention_to_trash: true,
+            pinned: Vec::new(),
+            language: crate::i18n::Language::System,
             effect_border: false,
             effect_border_width: 2,
             effect_border_color: [80, 80, 80, 255],

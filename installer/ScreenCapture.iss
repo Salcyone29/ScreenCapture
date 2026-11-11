@@ -2,7 +2,7 @@
 ; Compilé par build-installer.ps1, qui fournit AppVersion depuis Cargo.toml.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.10"
+  #define AppVersion "0.1.11"
 #endif
 #define AppName "ScreenCapture"
 #define AppExe "ScreenCapture.exe"
@@ -29,6 +29,8 @@ SetupIconFile=..\assets\ScreenCapture.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 WizardStyle=modern
+; Langue de Windows si elle est proposée, sinon choix de la langue.
+ShowLanguageDialog=auto
 Compression=lzma2/max
 SolidCompression=yes
 OutputDir=..\dist
@@ -36,6 +38,9 @@ OutputBaseFilename=ScreenCapture-Setup-{#AppVersion}
 
 [Languages]
 Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "de"; MessagesFile: "compiler:Languages\German.isl"
 
 [CustomMessages]
 fr.FfmpegTask=Télécharger et installer FFmpeg (nécessaire pour l'enregistrement vidéo, ~100 Mo)
@@ -44,6 +49,39 @@ fr.StartupGroup=Démarrage :
 fr.StartupTask=Lancer {#AppName} au démarrage de Windows
 fr.FfmpegDownloading=Téléchargement de FFmpeg depuis gyan.dev…
 fr.FfmpegInstalling=Installation de FFmpeg…
+fr.FfmpegCancelled=Téléchargement de FFmpeg annulé.%n%nContinuer l'installation sans FFmpeg ?
+fr.FfmpegFailed=Le téléchargement de FFmpeg a échoué :%n%1%n%nContinuer l'installation sans FFmpeg ?
+fr.FfmpegInstallFailed=FFmpeg n'a pas pu être installé (code %1).%nL'enregistrement vidéo restera indisponible ; vous pourrez indiquer un ffmpeg.exe dans les paramètres.
+
+en.FfmpegTask=Download and install FFmpeg (needed for video recording, ~100 MB)
+en.FfmpegGroup=Video recording:
+en.StartupGroup=Startup:
+en.StartupTask=Launch {#AppName} when Windows starts
+en.FfmpegDownloading=Downloading FFmpeg from gyan.dev…
+en.FfmpegInstalling=Installing FFmpeg…
+en.FfmpegCancelled=FFmpeg download cancelled.%n%nContinue the installation without FFmpeg?
+en.FfmpegFailed=The FFmpeg download failed:%n%1%n%nContinue the installation without FFmpeg?
+en.FfmpegInstallFailed=FFmpeg could not be installed (code %1).%nVideo recording will be unavailable; you can set an ffmpeg.exe in the settings.
+
+es.FfmpegTask=Descargar e instalar FFmpeg (necesario para grabar vídeo, ~100 MB)
+es.FfmpegGroup=Grabación de vídeo:
+es.StartupGroup=Inicio:
+es.StartupTask=Iniciar {#AppName} al arrancar Windows
+es.FfmpegDownloading=Descargando FFmpeg desde gyan.dev…
+es.FfmpegInstalling=Instalando FFmpeg…
+es.FfmpegCancelled=Descarga de FFmpeg cancelada.%n%n¿Continuar la instalación sin FFmpeg?
+es.FfmpegFailed=La descarga de FFmpeg ha fallado:%n%1%n%n¿Continuar la instalación sin FFmpeg?
+es.FfmpegInstallFailed=No se ha podido instalar FFmpeg (código %1).%nLa grabación de vídeo no estará disponible; puede indicar un ffmpeg.exe en los ajustes.
+
+de.FfmpegTask=FFmpeg herunterladen und installieren (für Videoaufnahmen nötig, ~100 MB)
+de.FfmpegGroup=Videoaufnahme:
+de.StartupGroup=Start:
+de.StartupTask={#AppName} beim Windows-Start ausführen
+de.FfmpegDownloading=FFmpeg wird von gyan.dev heruntergeladen…
+de.FfmpegInstalling=FFmpeg wird installiert…
+de.FfmpegCancelled=FFmpeg-Download abgebrochen.%n%nInstallation ohne FFmpeg fortsetzen?
+de.FfmpegFailed=Der FFmpeg-Download ist fehlgeschlagen:%n%1%n%nInstallation ohne FFmpeg fortsetzen?
+de.FfmpegInstallFailed=FFmpeg konnte nicht installiert werden (Code %1).%nVideoaufnahmen bleiben nicht verfügbar; Sie können in den Einstellungen eine ffmpeg.exe angeben.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -153,9 +191,9 @@ begin
         FfmpegReady := True;
       except
         if DownloadPage.AbortedByUser then
-          Result := MsgBox('Téléchargement de FFmpeg annulé.'#13#10#13#10'Continuer l''installation sans FFmpeg ?', mbConfirmation, MB_YESNO) = IDYES
+          Result := MsgBox(CustomMessage('FfmpegCancelled'), mbConfirmation, MB_YESNO) = IDYES
         else
-          Result := MsgBox('Le téléchargement de FFmpeg a échoué :'#13#10 + GetExceptionMessage + #13#10#13#10'Continuer l''installation sans FFmpeg ?', mbConfirmation, MB_YESNO) = IDYES;
+          Result := MsgBox(FmtMessage(CustomMessage('FfmpegFailed'), [GetExceptionMessage]), mbConfirmation, MB_YESNO) = IDYES;
       end;
     finally
       DownloadPage.Hide;
@@ -190,8 +228,7 @@ begin
     'Copy-Item -LiteralPath $f.FullName -Destination ' + PsQuote(Dest) + ' -Force';
   if not Exec('powershell.exe', '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + Cmd + '"', '', SW_HIDE, ewWaitUntilTerminated, Code)
      or (Code <> 0) or not FileExists(Dest + '\ffmpeg.exe') then
-    MsgBox('FFmpeg n''a pas pu être installé (code ' + IntToStr(Code) + ').'#13#10 +
-      'L''enregistrement vidéo restera indisponible ; vous pourrez indiquer un ffmpeg.exe dans les paramètres.', mbError, MB_OK);
+    MsgBox(FmtMessage(CustomMessage('FfmpegInstallFailed'), [IntToStr(Code)]), mbError, MB_OK);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

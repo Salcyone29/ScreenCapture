@@ -69,23 +69,23 @@ impl Tool {
 
     pub fn label(self) -> &'static str {
         match self {
-            Tool::Select => "Sélection (V)",
-            Tool::Arrow => "Flèche (A)",
-            Tool::Line => "Ligne (L)",
-            Tool::Rect => "Rectangle (R)",
-            Tool::Ellipse => "Ellipse (E)",
-            Tool::Highlight => "Surligneur (H)",
-            Tool::Blur => "Flouter / pixeliser (B)",
-            Tool::Text => "Texte (T)",
-            Tool::Bubble => "Bulle de texte (U)",
-            Tool::Number => "Numérotation (N)",
-            Tool::Pen => "Main levée (P)",
-            Tool::Magnifier => "Loupe (M)",
-            Tool::Stamp => "Tampon (S)",
-            Tool::Crop => "Rogner (C)",
-            Tool::Cut => "Découper une bande (X)",
-            Tool::MoveArea => "Déplacer une zone (D)",
-            Tool::Picker => "Pipette (I)",
+            Tool::Select => crate::i18n::tr("Sélection (V)"),
+            Tool::Arrow => crate::i18n::tr("Flèche (A)"),
+            Tool::Line => crate::i18n::tr("Ligne (L)"),
+            Tool::Rect => crate::i18n::tr("Rectangle (R)"),
+            Tool::Ellipse => crate::i18n::tr("Ellipse (E)"),
+            Tool::Highlight => crate::i18n::tr("Surligneur (H)"),
+            Tool::Blur => crate::i18n::tr("Flouter / pixeliser (B)"),
+            Tool::Text => crate::i18n::tr("Texte (T)"),
+            Tool::Bubble => crate::i18n::tr("Bulle de texte (U)"),
+            Tool::Number => crate::i18n::tr("Numérotation (N)"),
+            Tool::Pen => crate::i18n::tr("Main levée (P)"),
+            Tool::Magnifier => crate::i18n::tr("Loupe (M)"),
+            Tool::Stamp => crate::i18n::tr("Tampon (S)"),
+            Tool::Crop => crate::i18n::tr("Rogner (C)"),
+            Tool::Cut => crate::i18n::tr("Découper une bande (X)"),
+            Tool::MoveArea => crate::i18n::tr("Déplacer une zone (D)"),
+            Tool::Picker => crate::i18n::tr("Pipette (I)"),
         }
     }
 }
@@ -160,8 +160,8 @@ impl NumberFormat {
             NumberFormat::Padded => "01, 02, 03",
             NumberFormat::LowerAlpha => "a, b, c",
             NumberFormat::UpperAlpha => "A, B, C",
-            NumberFormat::LowerRoman => "i, ii, iii",
-            NumberFormat::UpperRoman => "I, II, III",
+            NumberFormat::LowerRoman => crate::i18n::tr("i, ii, iii"),
+            NumberFormat::UpperRoman => crate::i18n::tr("I, II, III"),
             NumberFormat::Greek => "α, β, γ",
         }
     }
@@ -392,18 +392,21 @@ pub fn snap_square(a: Pos2, b: Pos2) -> Pos2 {
     pos2(a.x + s * d.x.signum(), a.y + s * d.y.signum())
 }
 
-pub const STAMPS: [&str; 10] = [
-    "APPROUVÉ",
-    "VALIDÉ",
-    "REFUSÉ",
-    "CONFIDENTIEL",
-    "BROUILLON",
-    "À CORRIGER",
-    "NOUVEAU",
-    "IMPORTANT",
-    "AVANT",
-    "APRÈS",
-];
+/// Tampons proposés, dans la langue de l'interface.
+pub fn stamps() -> [&'static str; 10] {
+    [
+        crate::i18n::tr("APPROUVÉ"),
+        crate::i18n::tr("VALIDÉ"),
+        crate::i18n::tr("REFUSÉ"),
+        crate::i18n::tr("CONFIDENTIEL"),
+        crate::i18n::tr("BROUILLON"),
+        crate::i18n::tr("À CORRIGER"),
+        crate::i18n::tr("NOUVEAU"),
+        crate::i18n::tr("IMPORTANT"),
+        crate::i18n::tr("AVANT"),
+        crate::i18n::tr("APRÈS"),
+    ]
+}
 
 pub const COLORS: [[u8; 4]; 12] = [
     [229, 57, 53, 255],

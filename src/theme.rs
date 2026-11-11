@@ -515,10 +515,10 @@ pub fn confirm_dialog(ctx: &egui::Context, id: &str, icon: &str, title: &str, bo
                     // Hauteur fixe : une mise en page droite-à-gauche prendrait toute la hauteur restante.
                     ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), 40.0), egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = 8.0;
-                        if button(ui, ButtonKind::Danger, None, confirm).on_hover_text("Entrée").clicked() {
+                        if button(ui, ButtonKind::Danger, None, confirm).on_hover_text(crate::i18n::tr("Entrée")).clicked() {
                             answer = Some(true);
                         }
-                        if button(ui, ButtonKind::Text, None, "Annuler").on_hover_text("Échap").clicked() {
+                        if button(ui, ButtonKind::Text, None, crate::i18n::tr("Annuler")).on_hover_text(crate::i18n::tr("Échap")).clicked() {
                             answer = Some(false);
                         }
                     });

@@ -73,7 +73,7 @@ pub fn work_area_at(x: i32, y: i32) -> Rect {
 
 /// Capture une zone du bureau virtuel.
 pub fn capture_rect(r: Rect, with_cursor: bool) -> anyhow::Result<RgbaImage> {
-    anyhow::ensure!(r.w > 0 && r.h > 0, "zone vide");
+    anyhow::ensure!(r.w > 0 && r.h > 0, crate::i18n::tr("zone vide"));
     unsafe {
         let screen = GetDC(HWND::default());
         let mem = CreateCompatibleDC(screen);
@@ -102,7 +102,7 @@ pub fn capture_rect(r: Rect, with_cursor: bool) -> anyhow::Result<RgbaImage> {
         let _ = DeleteDC(mem);
         ReleaseDC(HWND::default(), screen);
         blit?;
-        anyhow::ensure!(lines == r.h, "GetDIBits a échoué");
+        anyhow::ensure!(lines == r.h, crate::i18n::tr("GetDIBits a échoué"));
         for px in buf.chunks_exact_mut(4) {
             px.swap(0, 2);
             px[3] = 255;

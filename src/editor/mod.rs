@@ -17,7 +17,7 @@ use image::RgbaImage;
 use crate::settings::Settings;
 use crate::texture::TiledTexture;
 use crate::theme::{self, palette, ButtonKind};
-use model::{snap45, snap_square, CutDir, CutEdge, Kind, NumberFormat, Shape, Style, Tool, COLORS, STAMPS};
+use model::{snap45, snap_square, CutDir, CutEdge, Kind, NumberFormat, Shape, Style, Tool, COLORS};
 
 pub enum EditorAction {
     Close,
@@ -112,8 +112,8 @@ impl Editor {
             focus_text: false,
             crop: None,
             cut: None,
-            cut_dir: CutDir::Horizontal,
-            cut_edge: CutEdge::Zigzag,
+            cut_dir: CutDir::Vertical,
+            cut_edge: CutEdge::Straight,
             area_sel: None,
             resize_pct: None,
             style_edit_open: false,
@@ -127,7 +127,7 @@ impl Editor {
             .as_ref()
             .and_then(|p| p.file_name())
             .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "Nouvelle capture".into());
+            .unwrap_or_else(|| crate::i18n::tr("Nouvelle capture").into());
         format!("{}{}", name, if self.modified { " •" } else { "" })
     }
 
@@ -380,7 +380,7 @@ impl Editor {
             .show(ctx, |ui| {
                 ui.horizontal_centered(|ui| {
                     let ppp = ctx.pixels_per_point();
-                    ui.label(egui::RichText::new(format!("{} × {} px", self.base.width(), self.base.height())).size(12.0).color(p.on_surface_variant));
+                    ui.label(egui::RichText::new(crate::i18n::trf("{0} × {1} px", &[&self.base.width(), &self.base.height()])).size(12.0).color(p.on_surface_variant));
                     ui.separator();
                     ui.label(egui::RichText::new(format!("{:.0} %", self.zoom * ppp * 100.0)).size(12.0).color(p.on_surface_variant));
                     if let Some((x, y)) = self.hover_px {
@@ -419,25 +419,25 @@ impl Editor {
 
     fn hint(&self) -> &'static str {
         if self.crop.is_some() {
-            return "Entrée : appliquer le rognage • Échap : annuler";
+            return crate::i18n::tr("Entrée : appliquer le rognage • Échap : annuler");
         }
         if self.cut.is_some() {
-            return "Entrée : retirer la bande • Échap : annuler";
+            return crate::i18n::tr("Entrée : retirer la bande • Échap : annuler");
         }
         match self.tool {
-            Tool::Select => "Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer",
-            Tool::Arrow | Tool::Line => "Glisser pour tracer • Maj : angles de 45°",
-            Tool::Rect | Tool::Ellipse => "Glisser pour tracer • Maj : forme régulière",
-            Tool::Text | Tool::Bubble if cfg!(target_os = "macos") => "Cliquer pour écrire • ⌘Entrée ou Échap pour valider",
-            Tool::Text | Tool::Bubble => "Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider",
-            Tool::Number => "Cliquer pour placer le numéro suivant",
-            Tool::Stamp => "Cliquer pour apposer le tampon",
-            Tool::Picker => "Cliquer pour prélever une couleur",
-            Tool::Crop => "Glisser pour définir la zone à conserver",
-            Tool::Cut => "Glisser pour choisir la bande à retirer",
-            Tool::MoveArea => "Glisser pour sélectionner une zone, puis la faire glisser • Suppr : la remettre en place",
-            _ if cfg!(target_os = "macos") => "Glisser pour tracer • Défiler : déplacer • ⌘+défiler ou pincer : zoom",
-            _ => "Glisser pour tracer • Molette : défiler • Ctrl+molette : zoom",
+            Tool::Select => crate::i18n::tr("Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer"),
+            Tool::Arrow | Tool::Line => crate::i18n::tr("Glisser pour tracer • Maj : angles de 45°"),
+            Tool::Rect | Tool::Ellipse => crate::i18n::tr("Glisser pour tracer • Maj : forme régulière"),
+            Tool::Text | Tool::Bubble if cfg!(target_os = "macos") => crate::i18n::tr("Cliquer pour écrire • ⌘Entrée ou Échap pour valider"),
+            Tool::Text | Tool::Bubble => crate::i18n::tr("Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider"),
+            Tool::Number => crate::i18n::tr("Cliquer pour placer le numéro suivant"),
+            Tool::Stamp => crate::i18n::tr("Cliquer pour apposer le tampon"),
+            Tool::Picker => crate::i18n::tr("Cliquer pour prélever une couleur"),
+            Tool::Crop => crate::i18n::tr("Glisser pour définir la zone à conserver"),
+            Tool::Cut => crate::i18n::tr("Glisser pour choisir la bande à retirer"),
+            Tool::MoveArea => crate::i18n::tr("Glisser pour sélectionner une zone, puis la faire glisser • Suppr : la remettre en place"),
+            _ if cfg!(target_os = "macos") => crate::i18n::tr("Glisser pour tracer • Défiler : déplacer • ⌘+défiler ou pincer : zoom"),
+            _ => crate::i18n::tr("Glisser pour tracer • Molette : défiler • Ctrl+molette : zoom"),
         }
     }
 
@@ -538,7 +538,7 @@ impl Editor {
     fn top_bar(&mut self, ui: &mut Ui, actions: &mut Vec<EditorAction>) {
         let p = palette(ui.ctx());
         ui.horizontal_centered(|ui| {
-            if theme::icon_button(ui, ICON_ARROW_BACK, false, "Retour à l'espace de travail").clicked() {
+            if theme::icon_button(ui, ICON_ARROW_BACK, false, crate::i18n::tr("Retour à l'espace de travail")).clicked() {
                 actions.push(EditorAction::Close);
             }
             ui.add_space(4.0);
@@ -549,50 +549,50 @@ impl Editor {
             ui.label(egui::RichText::new(title).font(theme::medium(18.0)).color(p.on_surface));
             ui.add_space(16.0);
             ui.add_enabled_ui(!self.undo.is_empty(), |ui| {
-                if theme::icon_button(ui, ICON_UNDO, false, &crate::platform::sc("Annuler (Ctrl+Z)")).clicked() {
+                if theme::icon_button(ui, ICON_UNDO, false, &crate::platform::sc(crate::i18n::tr("Annuler (Ctrl+Z)"))).clicked() {
                     self.undo();
                 }
             });
             ui.add_enabled_ui(!self.redo.is_empty(), |ui| {
-                if theme::icon_button(ui, ICON_REDO, false, &crate::platform::sc("Rétablir (Ctrl+Y)")).clicked() {
+                if theme::icon_button(ui, ICON_REDO, false, &crate::platform::sc(crate::i18n::tr("Rétablir (Ctrl+Y)"))).clicked() {
                     self.redo();
                 }
             });
             ui.separator();
-            if theme::icon_button(ui, ICON_ZOOM_OUT, false, "Zoom arrière").clicked() {
+            if theme::icon_button(ui, ICON_ZOOM_OUT, false, crate::i18n::tr("Zoom arrière")).clicked() {
                 self.fit = false;
                 self.zoom = (self.zoom / 1.25).max(0.05);
             }
-            if theme::icon_button(ui, ICON_FIT_SCREEN, self.fit, &crate::platform::sc("Ajuster à la fenêtre (Ctrl+0)")).clicked() {
+            if theme::icon_button(ui, ICON_FIT_SCREEN, self.fit, &crate::platform::sc(crate::i18n::tr("Ajuster à la fenêtre (Ctrl+0)"))).clicked() {
                 self.fit = true;
                 self.pan = Vec2::ZERO;
             }
-            if theme::icon_button(ui, ICON_ZOOM_IN, false, "Zoom avant").clicked() {
+            if theme::icon_button(ui, ICON_ZOOM_IN, false, crate::i18n::tr("Zoom avant")).clicked() {
                 self.fit = false;
                 self.zoom = (self.zoom * 1.25).min(16.0);
             }
             ui.separator();
-            if theme::icon_button(ui, ICON_ROTATE_LEFT, false, "Pivoter à gauche").clicked() {
+            if theme::icon_button(ui, ICON_ROTATE_LEFT, false, crate::i18n::tr("Pivoter à gauche")).clicked() {
                 self.rotate(false);
             }
-            if theme::icon_button(ui, ICON_ROTATE_RIGHT, false, "Pivoter à droite").clicked() {
+            if theme::icon_button(ui, ICON_ROTATE_RIGHT, false, crate::i18n::tr("Pivoter à droite")).clicked() {
                 self.rotate(true);
             }
-            if theme::icon_button(ui, ICON_PHOTO_SIZE_SELECT_LARGE, false, "Redimensionner").clicked() {
+            if theme::icon_button(ui, ICON_PHOTO_SIZE_SELECT_LARGE, false, crate::i18n::tr("Redimensionner")).clicked() {
                 self.resize_pct = Some(50);
             }
             ui.separator();
-            if theme::icon_button(ui, ICON_DOCUMENT_SCANNER, false, "Extraire le texte (OCR Windows)").clicked() {
+            if theme::icon_button(ui, ICON_DOCUMENT_SCANNER, false, crate::i18n::tr("Extraire le texte (OCR Windows)")).clicked() {
                 actions.push(EditorAction::Ocr);
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if theme::button(ui, ButtonKind::Filled, Some(ICON_SAVE), "Enregistrer").on_hover_text(crate::platform::sc("Ctrl+S")).clicked() {
+                if theme::button(ui, ButtonKind::Filled, Some(ICON_SAVE), crate::i18n::tr("Enregistrer")).on_hover_text(crate::platform::sc("Ctrl+S")).clicked() {
                     actions.push(EditorAction::Save);
                 }
-                if theme::icon_button(ui, ICON_SAVE_AS, false, &crate::platform::sc("Enregistrer sous… (Ctrl+Maj+S)")).clicked() {
+                if theme::icon_button(ui, ICON_SAVE_AS, false, &crate::platform::sc(crate::i18n::tr("Enregistrer sous… (Ctrl+Maj+S)"))).clicked() {
                     actions.push(EditorAction::SaveAs);
                 }
-                if theme::button(ui, ButtonKind::Tonal, Some(ICON_CONTENT_COPY), "Copier").on_hover_text(crate::platform::sc("Ctrl+C")).clicked() {
+                if theme::button(ui, ButtonKind::Tonal, Some(ICON_CONTENT_COPY), crate::i18n::tr("Copier")).on_hover_text(crate::platform::sc("Ctrl+C")).clicked() {
                     actions.push(EditorAction::Copy);
                 }
             });
@@ -630,13 +630,13 @@ impl Editor {
         // Curseurs à la largeur du panneau (moins la zone de valeur) pour ne jamais déborder.
         ui.spacing_mut().slider_width = (ui.available_width() - 76.0).max(60.0);
 
-        section(ui, if self.selected.is_some() { "Forme sélectionnée" } else { "Style" });
+        section(ui, if self.selected.is_some() { crate::i18n::tr("Forme sélectionnée") } else { crate::i18n::tr("Style") });
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = vec2(2.0, 2.0);
             let colors = if settings.palette.is_empty() { COLORS.to_vec() } else { settings.palette.clone() };
             for c in colors {
                 if theme::swatch(ui, Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]), self.style.color == c)
-                    .on_hover_text(if c[3] == 0 { "Transparent" } else { "" })
+                    .on_hover_text(if c[3] == 0 { crate::i18n::tr("Transparent") } else { "" })
                     .clicked()
                 {
                     self.style.color = c;
@@ -650,13 +650,13 @@ impl Editor {
             }
         });
 
-        section(ui, "Épaisseur");
+        section(ui, crate::i18n::tr("Épaisseur"));
         ui.add(egui::Slider::new(&mut self.style.width, 1.0..=40.0).suffix(" px"));
-        section(ui, "Taille du texte");
+        section(ui, crate::i18n::tr("Taille du texte"));
         ui.add(egui::Slider::new(&mut self.style.font_size, 10.0..=120.0).suffix(" px"));
 
         ui.add_space(4.0);
-        for (label, val) in [("Remplissage", 0), ("Ombre portée", 1), ("Pointillés", 2)] {
+        for (label, val) in [(crate::i18n::tr("Remplissage"), 0), (crate::i18n::tr("Ombre portée"), 1), (crate::i18n::tr("Pointillés"), 2)] {
             ui.horizontal(|ui| {
                 ui.label(label);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -699,21 +699,21 @@ impl Editor {
         if let Some(i) = self.selected.filter(|i| *i < self.shapes.len()) {
             ui.add_space(6.0);
             ui.horizontal(|ui| {
-                if theme::icon_button(ui, ICON_FLIP_TO_FRONT, false, "Premier plan").clicked() {
+                if theme::icon_button(ui, ICON_FLIP_TO_FRONT, false, crate::i18n::tr("Premier plan")).clicked() {
                     self.push_undo();
                     let s = self.shapes.remove(i);
                     self.shapes.push(s);
                     self.selected = Some(self.shapes.len() - 1);
                     self.dirty = true;
                 }
-                if theme::icon_button(ui, ICON_FLIP_TO_BACK, false, "Arrière-plan").clicked() {
+                if theme::icon_button(ui, ICON_FLIP_TO_BACK, false, crate::i18n::tr("Arrière-plan")).clicked() {
                     self.push_undo();
                     let s = self.shapes.remove(i);
                     self.shapes.insert(0, s);
                     self.selected = Some(0);
                     self.dirty = true;
                 }
-                if theme::icon_button(ui, ICON_DELETE, false, "Supprimer (Suppr)").clicked() {
+                if theme::icon_button(ui, ICON_DELETE, false, crate::i18n::tr("Supprimer (Suppr)")).clicked() {
                     self.push_undo();
                     self.shapes.remove(i);
                     self.selected = None;
@@ -729,7 +729,7 @@ impl Editor {
             _ => None,
         });
         if self.tool == Tool::Number || sel_number.is_some() {
-            section(ui, "Numérotation");
+            section(ui, crate::i18n::tr("Numérotation"));
             let current = sel_number.map_or(self.number_format, |s| s.2);
             let mut pick = None;
             ui.horizontal_wrapped(|ui| {
@@ -756,7 +756,7 @@ impl Editor {
             let mut value = sel_number.map_or(self.next_number, |s| s.1);
             let (mut edited, mut undo) = (false, false);
             ui.horizontal(|ui| {
-                ui.label(if sel_number.is_some() { "Valeur" } else { "Prochain" });
+                ui.label(if sel_number.is_some() { crate::i18n::tr("Valeur") } else { crate::i18n::tr("Prochain") });
                 let r = ui
                     .add(
                         egui::DragValue::new(&mut value)
@@ -765,11 +765,11 @@ impl Editor {
                             .custom_formatter(move |n, _| current.format(n as u32))
                             .custom_parser(move |s| current.parse(s).map(f64::from)),
                     )
-                    .on_hover_text("Glisser ou double-cliquer pour saisir (ex. 5, e, IV)");
+                    .on_hover_text(crate::i18n::tr("Glisser ou double-cliquer pour saisir (ex. 5, e, IV)"));
                 edited = r.changed();
                 undo = r.drag_started() || (r.changed() && !r.dragged());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if theme::icon_button(ui, ICON_RESTART_ALT, false, "Réinitialiser à 1").clicked() && value != 1 {
+                    if theme::icon_button(ui, ICON_RESTART_ALT, false, crate::i18n::tr("Réinitialiser à 1")).clicked() && value != 1 {
                         value = 1;
                         edited = true;
                         undo = true;
@@ -792,7 +792,7 @@ impl Editor {
             if !numbers.is_empty() {
                 ui.add_space(2.0);
                 let mixed = numbers.iter().any(|&i| !matches!(self.shapes[i].kind, Kind::Number(_, f) if f == current));
-                if mixed && theme::button(ui, ButtonKind::Text, Some(ICON_FORMAT_LIST_NUMBERED), "Appliquer ce style à tous").clicked() {
+                if mixed && theme::button(ui, ButtonKind::Text, Some(ICON_FORMAT_LIST_NUMBERED), crate::i18n::tr("Appliquer ce style à tous")).clicked() {
                     self.push_undo();
                     for &i in &numbers {
                         if let Kind::Number(n, _) = self.shapes[i].kind {
@@ -801,8 +801,8 @@ impl Editor {
                     }
                     self.dirty = true;
                 }
-                if theme::button(ui, ButtonKind::Text, Some(ICON_SORT), "Renuméroter dans l'ordre")
-                    .on_hover_text("Renumérote les pastilles dans l'ordre de création, à partir de 1")
+                if theme::button(ui, ButtonKind::Text, Some(ICON_SORT), crate::i18n::tr("Renuméroter dans l'ordre"))
+                    .on_hover_text(crate::i18n::tr("Renumérote les pastilles dans l'ordre de création, à partir de 1"))
                     .clicked()
                 {
                     self.push_undo();
@@ -818,12 +818,12 @@ impl Editor {
         }
 
         if self.tool == Tool::Cut {
-            section(ui, "Découpe");
-            ui.label(egui::RichText::new("Retire une bande de l'image et recolle les deux morceaux.").size(12.0).color(p.on_surface_variant));
+            section(ui, crate::i18n::tr("Découpe"));
+            ui.label(egui::RichText::new(crate::i18n::tr("Retire une bande de l'image et recolle les deux morceaux.")).size(12.0).color(p.on_surface_variant));
             ui.add_space(4.0);
-            ui.label("Bande à retirer");
+            ui.label(crate::i18n::tr("Bande à retirer"));
             ui.horizontal_wrapped(|ui| {
-                for (d, label) in [(CutDir::Horizontal, "Horizontale"), (CutDir::Vertical, "Verticale")] {
+                for (d, label) in [(CutDir::Horizontal, crate::i18n::tr("Horizontale")), (CutDir::Vertical, crate::i18n::tr("Verticale"))] {
                     if theme::filter_chip(ui, label, self.cut_dir == d).clicked() && self.cut_dir != d {
                         self.cut_dir = d;
                         self.cut = None;
@@ -831,9 +831,9 @@ impl Editor {
                 }
             });
             ui.add_space(4.0);
-            ui.label("Raccord");
+            ui.label(crate::i18n::tr("Raccord"));
             ui.horizontal_wrapped(|ui| {
-                for (e, label) in [(CutEdge::Straight, "Droit"), (CutEdge::Zigzag, "Zigzag")] {
+                for (e, label) in [(CutEdge::Straight, crate::i18n::tr("Droit")), (CutEdge::Zigzag, crate::i18n::tr("Zigzag"))] {
                     if theme::filter_chip(ui, label, self.cut_edge == e).clicked() {
                         self.cut_edge = e;
                     }
@@ -842,9 +842,9 @@ impl Editor {
         }
 
         if self.tool == Tool::MoveArea {
-            section(ui, "Déplacer une zone");
+            section(ui, crate::i18n::tr("Déplacer une zone"));
             ui.label(
-                egui::RichText::new("Sélectionnez une zone de l'image puis faites-la glisser. L'emplacement d'origine est rempli avec la couleur de fond détectée.")
+                egui::RichText::new(crate::i18n::tr("Sélectionnez une zone de l'image puis faites-la glisser. L'emplacement d'origine est rempli avec la couleur de fond détectée."))
                     .size(12.0)
                     .color(p.on_surface_variant),
             );
@@ -854,7 +854,7 @@ impl Editor {
                 let mut c = Color32::from_rgba_unmultiplied(fill[0], fill[1], fill[2], fill[3]);
                 let mut changed = false;
                 ui.horizontal(|ui| {
-                    ui.label("Remplissage de l'origine");
+                    ui.label(crate::i18n::tr("Remplissage de l'origine"));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         changed = ui.color_edit_button_srgba(&mut c).changed();
                     });
@@ -868,9 +868,9 @@ impl Editor {
         }
 
         if self.tool == Tool::Stamp {
-            section(ui, "Tampons");
+            section(ui, crate::i18n::tr("Tampons"));
             ui.horizontal_wrapped(|ui| {
-                for (i, s) in STAMPS.iter().enumerate() {
+                for (i, s) in model::stamps().iter().enumerate() {
                     if theme::filter_chip(ui, s, self.stamp == i).clicked() {
                         self.stamp = i;
                     }
@@ -880,10 +880,10 @@ impl Editor {
 
         ui.add_space(10.0);
         ui.separator();
-        section(ui, "Effets à l'export");
+        section(ui, crate::i18n::tr("Effets à l'export"));
         let mut changed = false;
         ui.horizontal(|ui| {
-            ui.label("Bordure");
+            ui.label(crate::i18n::tr("Bordure"));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 changed |= theme::switch(ui, &mut settings.effect_border).changed();
             });
@@ -891,7 +891,7 @@ impl Editor {
         if settings.effect_border {
             changed |= ui.add(egui::Slider::new(&mut settings.effect_border_width, 1..=20).suffix(" px")).changed();
             ui.horizontal(|ui| {
-                ui.label("Couleur de la bordure");
+                ui.label(crate::i18n::tr("Couleur de la bordure"));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let mut c = Color32::from_rgba_unmultiplied(settings.effect_border_color[0], settings.effect_border_color[1], settings.effect_border_color[2], settings.effect_border_color[3]);
                     if ui.color_edit_button_srgba(&mut c).changed() {
@@ -902,7 +902,7 @@ impl Editor {
             });
         }
         ui.horizontal(|ui| {
-            ui.label("Ombre portée");
+            ui.label(crate::i18n::tr("Ombre portée"));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 changed |= theme::switch(ui, &mut settings.effect_shadow).changed();
             });
@@ -1047,8 +1047,8 @@ impl Editor {
                     .show(ui.ctx(), |ui| {
                         egui::Frame::new().fill(p.surface_high).corner_radius(CornerRadius::same(24)).inner_margin(Margin::same(6)).show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                cancel = theme::button(ui, ButtonKind::Text, None, "Annuler").clicked();
-                                apply = theme::button(ui, ButtonKind::Filled, Some(ICON_CROP), "Rogner").clicked();
+                                cancel = theme::button(ui, ButtonKind::Text, None, crate::i18n::tr("Annuler")).clicked();
+                                apply = theme::button(ui, ButtonKind::Filled, Some(ICON_CROP), crate::i18n::tr("Rogner")).clicked();
                             });
                         });
                     });
@@ -1079,7 +1079,7 @@ impl Editor {
             for e in edges {
                 painter.extend(egui::Shape::dashed_line(&e, Stroke::new(2.0_f32, red), 8.0, 5.0));
             }
-            let label = format!("{:.0} px retirés", b - a);
+            let label = crate::i18n::trf("{0} px retirés", &[&(format!("{:.0}", b - a))]);
             let lp = if horizontal { pos2(area.center().x.max(img_rect.left() + 60.0), r.center().y) } else { pos2(r.center().x, img_rect.top() + 16.0) };
             painter.text(lp, Align2::CENTER_CENTER, label, FontId::proportional(13.0), red);
             if matches!(self.drag, Drag::None) && b - a >= 2.0 {
@@ -1091,8 +1091,8 @@ impl Editor {
                     .show(ui.ctx(), |ui| {
                         egui::Frame::new().fill(p.surface_high).corner_radius(CornerRadius::same(24)).inner_margin(Margin::same(6)).show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                cancel = theme::button(ui, ButtonKind::Text, None, "Annuler").clicked();
-                                apply = theme::button(ui, ButtonKind::Filled, Some(ICON_CONTENT_CUT), "Découper").clicked();
+                                cancel = theme::button(ui, ButtonKind::Text, None, crate::i18n::tr("Annuler")).clicked();
+                                apply = theme::button(ui, ButtonKind::Filled, Some(ICON_CONTENT_CUT), crate::i18n::tr("Découper")).clicked();
                             });
                         });
                     });
@@ -1306,7 +1306,7 @@ impl Editor {
             }
             Tool::Stamp if inside => {
                 self.push_undo();
-                let mut s = Shape { kind: Kind::Stamp(STAMPS[self.stamp].to_string()), a: ip, b: ip, style: self.style.clone() };
+                let mut s = Shape { kind: Kind::Stamp(model::stamps()[self.stamp].to_string()), a: ip, b: ip, style: self.style.clone() };
                 let (w, h) = render::text_box_size(&s);
                 s.a = ip - vec2(w, h) / 2.0;
                 s.b = s.a + vec2(w, h);
@@ -1355,7 +1355,7 @@ impl Editor {
                             .frame(false)
                             .desired_rows(1)
                             .desired_width((font_px * 8.0).max(120.0))
-                            .hint_text("Saisissez votre texte…");
+                            .hint_text(crate::i18n::tr("Saisissez votre texte…"));
                         let r = ui.add(te);
                         if self.focus_text {
                             r.request_focus();
@@ -1388,7 +1388,7 @@ impl Editor {
         let Some(mut pct) = self.resize_pct else { return };
         let mut open = true;
         let mut apply = false;
-        egui::Window::new("Redimensionner l'image")
+        egui::Window::new(crate::i18n::tr("Redimensionner l'image"))
             .collapsible(false)
             .resizable(false)
             .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
@@ -1396,7 +1396,7 @@ impl Editor {
             .show(ctx, |ui| {
                 ui.add(egui::Slider::new(&mut pct, 10..=400).suffix(" %"));
                 let (w, h) = (self.base.width() * pct / 100, self.base.height() * pct / 100);
-                ui.label(format!("Nouvelle taille : {w} × {h} px"));
+                ui.label(crate::i18n::trf("Nouvelle taille : {0} × {1} px", &[&w, &h]));
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     for v in [25, 50, 75, 150, 200] {
@@ -1407,7 +1407,7 @@ impl Editor {
                 });
                 ui.add_space(12.0);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    apply = theme::button(ui, ButtonKind::Filled, None, "Appliquer").clicked();
+                    apply = theme::button(ui, ButtonKind::Filled, None, crate::i18n::tr("Appliquer")).clicked();
                 });
             });
         self.resize_pct = Some(pct);

@@ -144,7 +144,7 @@ pub fn work_area_at(x: i32, y: i32) -> Rect {
 
 /// Capture une zone (unités de l'application) ; l'image fait `r.w × r.h` pixels.
 pub fn capture_rect(r: Rect, _with_cursor: bool) -> anyhow::Result<RgbaImage> {
-    anyhow::ensure!(r.w > 0 && r.h > 0, "zone vide");
+    anyhow::ensure!(r.w > 0 && r.h > 0, crate::i18n::tr("zone vide"));
     let s = scale();
     let cg = CGDisplay::screenshot(
         rect_to_cg(r, s),
@@ -154,11 +154,11 @@ pub fn capture_rect(r: Rect, _with_cursor: bool) -> anyhow::Result<RgbaImage> {
     )
     .ok_or_else(|| {
         anyhow::anyhow!(
-            "Capture refusée : autorisez ScreenCapture dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, puis relancez l'application."
+            crate::i18n::tr("Capture refusée : autorisez ScreenCapture dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, puis relancez l'application.")
         )
     })?;
     let (w, h, stride) = (cg.width(), cg.height(), cg.bytes_per_row());
-    anyhow::ensure!(w > 0 && h > 0 && cg.bits_per_pixel() == 32, "format d'image inattendu");
+    anyhow::ensure!(w > 0 && h > 0 && cg.bits_per_pixel() == 32, crate::i18n::tr("format d'image inattendu"));
     let data = cg.data();
     let bytes = data.bytes();
     let mut buf = Vec::with_capacity(w * h * 4);

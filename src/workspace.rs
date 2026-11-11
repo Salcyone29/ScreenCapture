@@ -15,6 +15,7 @@ use crate::theme::{self, palette};
 pub const IMAGE_EXT: [&str; 5] = ["png", "jpg", "jpeg", "bmp", "gif"];
 const VIDEO_EXT: [&str; 3] = ["mp4", "webm", "mkv"];
 
+#[derive(Clone)]
 pub struct Item {
     pub path: PathBuf,
     pub name: String,
@@ -34,7 +35,10 @@ pub enum WsAction {
     Capture(CaptureKind),
     Edit(PathBuf),
     Copy(PathBuf),
-    Delete(PathBuf),
+    /// Envoyer ces captures dans la Corbeille (confirmation déjà faite).
+    Delete(Vec<PathBuf>),
+    /// Épingler (ou désépingler si toutes le sont) : protégées de la suppression automatique.
+    TogglePin(Vec<PathBuf>),
     Open(PathBuf),
     Reveal(PathBuf),
     OpenFolder,
@@ -51,9 +55,16 @@ pub struct Workspace {
     last_scan: Option<Instant>,
     filter: Filter,
     search: String,
-    confirm_delete: Option<PathBuf>,
-    /// Capture sélectionnée d'un clic (Suppr la supprime).
-    selected: Option<PathBuf>,
+    /// Captures dont la suppression attend confirmation.
+    confirm_delete: Option<Vec<PathBuf>>,
+    /// Captures sélectionnées (clic, Ctrl+clic, Maj+clic, Ctrl+A) ; Suppr les supprime.
+    selected: Vec<PathBuf>,
+    /// Point de départ d'une sélection par plage (Maj+clic).
+    anchor: Option<PathBuf>,
+    /// Captures visibles, dans l'ordre d'affichage (pour Maj+clic et Ctrl+A).
+    visible_order: Vec<PathBuf>,
+    /// Position des vignettes affichées (points, relatifs à la fenêtre), pour les tests.
+    pub card_rects: Vec<(PathBuf, Rect)>,
 }
 
 impl Workspace {
@@ -83,7 +94,10 @@ impl Workspace {
             filter: Filter::All,
             search: String::new(),
             confirm_delete: None,
-            selected: None,
+            selected: Vec::new(),
+            anchor: None,
+            visible_order: Vec::new(),
+            card_rects: Vec::new(),
         }
     }
 
@@ -92,9 +106,7 @@ impl Workspace {
     }
 
     pub fn forget(&mut self, path: &Path) {
-        if self.selected.as_deref() == Some(path) {
-            self.selected = None;
-        }
+        self.selected.retain(|p| p != path);
         self.thumbs.remove(path);
         self.pending.remove(path);
         self.refresh();
@@ -153,7 +165,7 @@ impl Workspace {
 
         egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
             ui.add_space(8.0);
-            ui.label(egui::RichText::new("Nouvelle capture").font(theme::medium(22.0)).color(p.on_surface));
+            ui.label(egui::RichText::new(crate::i18n::tr("Nouvelle capture")).font(theme::medium(22.0)).color(p.on_surface));
             ui.add_space(12.0);
             let shortcut = |k: CaptureKind| -> String {
                 let hk = &settings.hotkeys;
@@ -163,11 +175,11 @@ impl Workspace {
                     CaptureKind::Window => &hk.window,
                     CaptureKind::LastRegion => &hk.last_region,
                     CaptureKind::Video => &hk.video,
-                    CaptureKind::Delayed => return format!("Après {} s", settings.delay_seconds),
+                    CaptureKind::Delayed => return crate::i18n::trf("Après {0} s", &[&settings.delay_seconds]),
                 };
                 let ok = hotkeys_ok.iter().find(|(c, _)| *c == k).map(|(_, ok)| *ok).unwrap_or(false);
                 if s.is_empty() {
-                    "Aucun raccourci".into()
+                    crate::i18n::tr("Aucun raccourci").into()
                 } else if ok {
                     pretty_hotkey(s)
                 } else {
@@ -177,12 +189,12 @@ impl Workspace {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = vec2(12.0, 12.0);
                 let cards = [
-                    (CaptureKind::Region, ICON_SCREENSHOT_REGION, "Zone", true),
-                    (CaptureKind::Fullscreen, ICON_SCREENSHOT_MONITOR, "Plein écran", false),
-                    (CaptureKind::Window, ICON_WEB_ASSET, "Fenêtre", false),
-                    (CaptureKind::LastRegion, ICON_CROP_FREE, "Dernière zone", false),
-                    (CaptureKind::Delayed, ICON_TIMER, "Différée", false),
-                    (CaptureKind::Video, ICON_VIDEOCAM, "Vidéo", false),
+                    (CaptureKind::Region, ICON_SCREENSHOT_REGION, crate::i18n::tr("Zone"), true),
+                    (CaptureKind::Fullscreen, ICON_SCREENSHOT_MONITOR, crate::i18n::tr("Plein écran"), false),
+                    (CaptureKind::Window, ICON_WEB_ASSET, crate::i18n::tr("Fenêtre"), false),
+                    (CaptureKind::LastRegion, ICON_CROP_FREE, crate::i18n::tr("Dernière zone"), false),
+                    (CaptureKind::Delayed, ICON_TIMER, crate::i18n::tr("Différée"), false),
+                    (CaptureKind::Video, ICON_VIDEOCAM, crate::i18n::tr("Vidéo"), false),
                 ];
                 for (kind, icon, title, emph) in cards {
                     if theme::action_card(ui, icon, title, &shortcut(kind), emph).clicked() {
@@ -193,33 +205,36 @@ impl Workspace {
 
             ui.add_space(28.0);
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Historique").font(theme::medium(22.0)).color(p.on_surface));
-                ui.label(egui::RichText::new(format!("{} élément{}", self.items.len(), if self.items.len() > 1 { "s" } else { "" })).color(p.on_surface_variant));
+                ui.label(egui::RichText::new(crate::i18n::tr("Historique")).font(theme::medium(22.0)).color(p.on_surface));
+                ui.label(egui::RichText::new(if self.items.len() > 1 { crate::i18n::trf("{0} éléments", &[&self.items.len()]) } else { crate::i18n::trf("{0} élément", &[&self.items.len()]) }).color(p.on_surface_variant));
+                if self.selected.len() > 1 {
+                    ui.label(egui::RichText::new(crate::i18n::trf("•  {0} sélectionnées  •  Suppr pour les supprimer", &[&self.selected.len()])).color(p.primary));
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if theme::icon_button(ui, ICON_FOLDER_OPEN, false, "Ouvrir le dossier des captures").clicked() {
+                    if theme::icon_button(ui, ICON_FOLDER_OPEN, false, crate::i18n::tr("Ouvrir le dossier des captures")).clicked() {
                         actions.push(WsAction::OpenFolder);
                     }
-                    if theme::icon_button(ui, ICON_IMAGE, false, "Ouvrir une image dans l'éditeur").clicked() {
+                    if theme::icon_button(ui, ICON_IMAGE, false, crate::i18n::tr("Ouvrir une image dans l'éditeur")).clicked() {
                         actions.push(WsAction::OpenFile);
                     }
-                    if theme::icon_button(ui, ICON_CONTENT_PASTE, false, &crate::platform::sc("Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)")).clicked() {
+                    if theme::icon_button(ui, ICON_CONTENT_PASTE, false, &crate::platform::sc(crate::i18n::tr("Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)"))).clicked() {
                         actions.push(WsAction::Paste);
                     }
-                    if theme::icon_button(ui, ICON_REFRESH, false, "Actualiser").clicked() {
+                    if theme::icon_button(ui, ICON_REFRESH, false, crate::i18n::tr("Actualiser")).clicked() {
                         self.refresh();
                     }
                 });
             });
             ui.add_space(8.0);
             ui.horizontal(|ui| {
-                for (f, label) in [(Filter::All, "Tout"), (Filter::Images, "Images"), (Filter::Videos, "Vidéos")] {
+                for (f, label) in [(Filter::All, crate::i18n::tr("Tout")), (Filter::Images, crate::i18n::tr("Images")), (Filter::Videos, crate::i18n::tr("Vidéos"))] {
                     if theme::filter_chip(ui, label, self.filter == f).clicked() {
                         self.filter = f;
                     }
                 }
                 ui.add_space(12.0);
                 ui.label(egui::RichText::new(ICON_SEARCH).size(20.0).color(p.on_surface_variant));
-                theme::text_field(ui, &mut self.search, 200.0, "Rechercher…");
+                theme::text_field(ui, &mut self.search, 200.0, crate::i18n::tr("Rechercher…"));
             });
             ui.add_space(14.0);
 
@@ -242,41 +257,49 @@ impl Workspace {
                 ui.vertical_centered(|ui| {
                     ui.label(egui::RichText::new(ICON_PHOTO_LIBRARY).size(64.0).color(p.outline));
                     ui.add_space(8.0);
-                    ui.label(egui::RichText::new("Aucune capture pour l'instant").font(theme::medium(16.0)).color(p.on_surface));
-                    ui.label(egui::RichText::new(format!("Appuyez sur {} pour capturer une zone de l'écran.", pretty_hotkey(&settings.hotkeys.region))).color(p.on_surface_variant));
+                    ui.label(egui::RichText::new(crate::i18n::tr("Aucune capture pour l'instant")).font(theme::medium(16.0)).color(p.on_surface));
+                    ui.label(egui::RichText::new(crate::i18n::trf("Appuyez sur {0} pour capturer une zone de l'écran.", &[&pretty_hotkey(&settings.hotkeys.region)])).color(p.on_surface_variant));
                 });
                 return;
             }
 
-            // Sélection masquée par un filtre ou une recherche : on l'oublie.
-            if self.selected.as_ref().is_some_and(|s| !visible.iter().any(|&i| &self.items[i].path == s)) {
-                self.selected = None;
-            }
+            // Captures masquées par un filtre ou une recherche : retirées de la sélection.
+            self.visible_order = visible.iter().map(|&i| self.items[i].path.clone()).collect();
+            let order = &self.visible_order;
+            self.selected.retain(|s| order.contains(s));
+            self.card_rects.clear();
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = vec2(14.0, 14.0);
                 for i in visible {
-                    self.card(ui, i, &mut actions);
+                    let pinned = crate::retention::is_pinned(settings, &self.items[i].path);
+                    self.card(ui, i, pinned, &mut actions);
                 }
             });
             ui.add_space(24.0);
         });
 
-        // Suppr : supprimer la capture sélectionnée (après confirmation) ; Échap : désélectionner.
+        // Suppr : supprimer les captures sélectionnées (après confirmation) ; Ctrl+A : tout
+        // sélectionner ; Échap : désélectionner.
         let ctx = ui.ctx().clone();
         if self.confirm_delete.is_none() && !ctx.wants_keyboard_input() {
-            let (del, esc) = ctx.input(|i| (i.key_pressed(egui::Key::Delete), i.key_pressed(egui::Key::Escape)));
-            if del {
-                self.confirm_delete = self.selected.clone();
+            let (del, esc, all) = ctx.input(|i| (i.key_pressed(egui::Key::Delete), i.key_pressed(egui::Key::Escape), i.modifiers.command && i.key_pressed(egui::Key::A)));
+            if del && !self.selected.is_empty() {
+                self.confirm_delete = Some(self.selected.clone());
             } else if esc {
-                self.selected = None;
+                self.selected.clear();
+            } else if all {
+                self.selected = self.visible_order.clone();
             }
         }
 
-        if let Some(path) = self.confirm_delete.clone() {
-            let body = format!("« {} » sera envoyé dans la Corbeille.", path.file_name().unwrap_or_default().to_string_lossy());
-            if let Some(ok) = theme::confirm_dialog(&ctx, "confirm_delete", ICON_DELETE, "Supprimer la capture ?", &body, "Supprimer") {
+        if let Some(paths) = self.confirm_delete.clone() {
+            let (title, body) = match paths.as_slice() {
+                [one] => (crate::i18n::tr("Supprimer la capture ?").to_string(), crate::i18n::trf("« {0} » sera envoyé dans la Corbeille.", &[&one.file_name().unwrap_or_default().to_string_lossy()])),
+                many => (crate::i18n::trf("Supprimer {0} captures ?", &[&many.len()]), crate::i18n::trf("Les {0} captures sélectionnées seront envoyées dans la Corbeille.", &[&many.len()])),
+            };
+            if let Some(ok) = theme::confirm_dialog(&ctx, "confirm_delete", ICON_DELETE, &title, &body, crate::i18n::tr("Supprimer")) {
                 if ok {
-                    actions.push(WsAction::Delete(path));
+                    actions.push(WsAction::Delete(paths));
                 }
                 self.confirm_delete = None;
             }
@@ -284,9 +307,55 @@ impl Workspace {
         actions
     }
 
-    fn card(&mut self, ui: &mut Ui, i: usize, actions: &mut Vec<WsAction>) {
+    pub fn selected_count(&self) -> usize {
+        self.selected.len()
+    }
+
+    /// Clic sur une vignette : sélection simple, Ctrl+clic (ajouter / retirer) ou Maj+clic (plage).
+    fn click_select(&mut self, path: &Path, ctrl: bool, shift: bool) {
+        if shift {
+            let anchor = self.anchor.clone().unwrap_or_else(|| path.to_path_buf());
+            let a = self.visible_order.iter().position(|p| *p == anchor);
+            let b = self.visible_order.iter().position(|p| p == path);
+            if let (Some(a), Some(b)) = (a, b) {
+                let range = self.visible_order[a.min(b)..=a.max(b)].to_vec();
+                if ctrl {
+                    for p in range {
+                        if !self.selected.contains(&p) {
+                            self.selected.push(p);
+                        }
+                    }
+                } else {
+                    self.selected = range;
+                }
+            }
+            return;
+        }
+        if ctrl {
+            if let Some(i) = self.selected.iter().position(|p| p == path) {
+                self.selected.remove(i);
+            } else {
+                self.selected.push(path.to_path_buf());
+            }
+        } else {
+            self.selected = vec![path.to_path_buf()];
+        }
+        self.anchor = Some(path.to_path_buf());
+    }
+
+    /// Captures concernées par une action sur `path` : toute la sélection si `path` en fait partie.
+    fn targets(&self, path: &Path) -> Vec<PathBuf> {
+        if self.selected.len() > 1 && self.selected.iter().any(|p| p == path) {
+            self.selected.clone()
+        } else {
+            vec![path.to_path_buf()]
+        }
+    }
+
+    fn card(&mut self, ui: &mut Ui, i: usize, pinned: bool, actions: &mut Vec<WsAction>) {
         let p = palette(ui.ctx());
-        let it = &self.items[i];
+        // Copie : la sélection (clic) modifie `self` pendant l'affichage de la vignette.
+        let it = self.items[i].clone();
         let path = it.path.clone();
         let size = vec2(220.0, 178.0);
         let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
@@ -297,10 +366,15 @@ impl Workspace {
             self.pending.insert(path.clone());
             let _ = self.req_tx.send(path.clone());
         }
-        if resp.clicked() || resp.secondary_clicked() {
-            self.selected = Some(path.clone());
+        self.card_rects.push((path.clone(), rect));
+        if resp.clicked() {
+            let (ctrl, shift) = ui.input(|i| (i.modifiers.command, i.modifiers.shift));
+            self.click_select(&path, ctrl, shift);
+        } else if resp.secondary_clicked() && !self.selected.contains(&path) {
+            // Clic droit hors de la sélection : sélectionner cette capture seule.
+            self.click_select(&path, false, false);
         }
-        let selected = self.selected.as_ref() == Some(&path);
+        let selected = self.selected.contains(&path);
         let painter = ui.painter();
         let hovered = resp.hovered();
         if hovered {
@@ -321,6 +395,12 @@ impl Workspace {
             painter.text(thumb_area.center(), Align2::CENTER_CENTER, if it.name.ends_with(".gif") { ICON_GIF } else { ICON_PLAY_ARROW }, FontId::proportional(30.0), p.on_primary_container);
         } else {
             painter.text(thumb_area.center(), Align2::CENTER_CENTER, ICON_IMAGE, FontId::proportional(30.0), p.outline);
+        }
+        if pinned {
+            // Pastille d'épingle, toujours visible.
+            let c = pos2(thumb_area.right() - 16.0, thumb_area.top() + 16.0);
+            painter.circle_filled(c, 13.0, p.primary);
+            painter.text(c, Align2::CENTER_CENTER, ICON_KEEP, FontId::proportional(15.0), p.on_primary);
         }
         if it.is_video {
             let badge = Rect::from_min_size(thumb_area.min + vec2(6.0, 6.0), vec2(54.0, 20.0));
@@ -344,15 +424,16 @@ impl Workspace {
         let mut consumed = false;
         let show_bar = hovered || resp.contains_pointer();
         {
-            let bar = Rect::from_min_size(pos2(thumb_area.right() - 4.0 - 4.0 * 34.0, thumb_area.bottom() - 40.0), vec2(4.0 * 34.0, 34.0));
+            let bar = Rect::from_min_size(pos2(thumb_area.right() - 4.0 - 5.0 * 34.0, thumb_area.bottom() - 40.0), vec2(5.0 * 34.0, 34.0));
             if show_bar {
                 painter.rect_filled(bar, 17.0, p.surface_high);
             }
-            let icons: [(&str, &str, u8); 4] = [
-                (if is_video { ICON_PLAY_ARROW } else { ICON_EDIT }, if is_video { "Lire" } else { "Éditer" }, 0),
-                (ICON_CONTENT_COPY, "Copier", 1),
-                (ICON_FOLDER_OPEN, if cfg!(target_os = "macos") { "Afficher dans le Finder" } else { "Afficher dans l'Explorateur" }, 2),
-                (ICON_DELETE, "Supprimer", 3),
+            let icons: [(&str, &str, u8); 5] = [
+                (if is_video { ICON_PLAY_ARROW } else { ICON_EDIT }, if is_video { crate::i18n::tr("Lire") } else { crate::i18n::tr("Éditer") }, 0),
+                (ICON_CONTENT_COPY, crate::i18n::tr("Copier"), 1),
+                (if pinned { ICON_KEEP_OFF } else { ICON_KEEP }, if pinned { crate::i18n::tr("Désépingler") } else { crate::i18n::tr("Épingler : jamais supprimée automatiquement") }, 4),
+                (ICON_FOLDER_OPEN, crate::platform::reveal_label(), 2),
+                (ICON_DELETE, crate::i18n::tr("Supprimer"), 3),
             ];
             for (k, (icon, tip, id)) in icons.iter().enumerate() {
                 let r = Rect::from_min_size(bar.min + vec2(k as f32 * 34.0, 0.0), vec2(34.0, 34.0));
@@ -370,7 +451,8 @@ impl Workspace {
                         0 => actions.push(if is_video { WsAction::Open(path.clone()) } else { WsAction::Edit(path.clone()) }),
                         1 => actions.push(WsAction::Copy(path.clone())),
                         2 => actions.push(WsAction::Reveal(path.clone())),
-                        _ => self.confirm_delete = Some(path.clone()),
+                        4 => actions.push(WsAction::TogglePin(self.targets(&path))),
+                        _ => self.confirm_delete = Some(vec![path.clone()]),
                     }
                 }
             }
@@ -381,25 +463,36 @@ impl Workspace {
         }
         let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
         resp.context_menu(|ui| {
-            if !is_video && ui.button(format!("{ICON_EDIT}  Éditer")).clicked() {
+            if !is_video && ui.button(crate::i18n::trf("{0}  Éditer", &[&ICON_EDIT])).clicked() {
                 actions.push(WsAction::Edit(path.clone()));
                 ui.close_menu();
             }
-            if ui.button(format!("{ICON_OPEN_IN_NEW}  Ouvrir avec l'application par défaut")).clicked() {
+            if ui.button(crate::i18n::trf("{0}  Ouvrir avec l'application par défaut", &[&ICON_OPEN_IN_NEW])).clicked() {
                 actions.push(WsAction::Open(path.clone()));
                 ui.close_menu();
             }
-            if ui.button(format!("{ICON_CONTENT_COPY}  Copier")).clicked() {
+            if ui.button(crate::i18n::trf("{0}  Copier", &[&ICON_CONTENT_COPY])).clicked() {
                 actions.push(WsAction::Copy(path.clone()));
                 ui.close_menu();
             }
-            if ui.button(format!("{ICON_FOLDER_OPEN}  Afficher dans {}", crate::platform::FILE_MANAGER)).clicked() {
+            if ui.button(format!("{ICON_FOLDER_OPEN}  {}", crate::platform::reveal_label())).clicked() {
                 actions.push(WsAction::Reveal(path.clone()));
                 ui.close_menu();
             }
             ui.separator();
-            if ui.button(format!("{ICON_DELETE}  Supprimer")).clicked() {
-                self.confirm_delete = Some(path.clone());
+            let targets = self.targets(&path);
+            let pin_label = match (pinned, targets.len()) {
+                (true, 1) => crate::i18n::trf("{0}  Désépingler", &[&ICON_KEEP_OFF]),
+                (false, 1) => crate::i18n::trf("{0}  Épingler", &[&ICON_KEEP]),
+                (_, n) => crate::i18n::trf("{0}  Épingler / désépingler les {1} captures", &[&ICON_KEEP, &n]),
+            };
+            if ui.button(pin_label).clicked() {
+                actions.push(WsAction::TogglePin(targets.clone()));
+                ui.close_menu();
+            }
+            let label = if targets.len() > 1 { crate::i18n::trf("{0}  Supprimer les {1} captures", &[&ICON_DELETE, &targets.len()]) } else { crate::i18n::trf("{0}  Supprimer", &[&ICON_DELETE]) };
+            if ui.button(label).clicked() {
+                self.confirm_delete = Some(targets);
                 ui.close_menu();
             }
         });
@@ -416,9 +509,9 @@ fn ellipsize(s: &str, max: usize) -> String {
 
 fn human_size(b: u64) -> String {
     if b >= 1 << 20 {
-        format!("{:.1} Mo", b as f64 / (1u64 << 20) as f64)
+        crate::i18n::trf("{0} Mo", &[&(format!("{:.1}", b as f64 / (1u64 << 20) as f64))])
     } else {
-        format!("{} Ko", (b + 1023) / 1024)
+        crate::i18n::trf("{0} Ko", &[&((b + 1023) / 1024)])
     }
 }
 
@@ -426,11 +519,11 @@ fn human_size(b: u64) -> String {
 pub fn pretty_hotkey(s: &str) -> String {
     s.split('+')
         .map(|t| match t.trim().to_lowercase().as_str() {
-            "ctrl" | "control" => if cfg!(target_os = "macos") { "⌃" } else { "Ctrl" }.to_string(),
-            "shift" => if cfg!(target_os = "macos") { "⇧" } else { "Maj" }.to_string(),
-            "alt" | "option" => if cfg!(target_os = "macos") { "⌥" } else { "Alt" }.to_string(),
-            "super" | "win" | "meta" | "cmd" | "command" => if cfg!(target_os = "macos") { "⌘" } else { "Win" }.to_string(),
-            "printscreen" => "Impr. écran".to_string(),
+            "ctrl" | "control" => if cfg!(target_os = "macos") { "⌃" } else { crate::i18n::tr("Ctrl") }.to_string(),
+            "shift" => if cfg!(target_os = "macos") { "⇧" } else { crate::i18n::tr("Maj") }.to_string(),
+            "alt" | "option" => if cfg!(target_os = "macos") { "⌥" } else { crate::i18n::tr("Alt") }.to_string(),
+            "super" | "win" | "meta" | "cmd" | "command" => if cfg!(target_os = "macos") { "⌘" } else { crate::i18n::tr("Win") }.to_string(),
+            "printscreen" => crate::i18n::tr("Impr. écran").to_string(),
             other => {
                 let o = other.trim_start_matches("key").trim_start_matches("digit");
                 o.to_uppercase()

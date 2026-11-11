@@ -3,25 +3,16 @@
 use std::path::Path;
 
 use objc2::rc::Retained;
-use objc2_app_kit::{
-    NSApplication, NSNormalWindowLevel, NSStatusWindowLevel, NSView, NSWindow, NSWindowCollectionBehavior,
-    NSWindowSharingType, NSWindowStyleMask,
-};
+use objc2_app_kit::{NSApplication, NSStatusWindowLevel, NSView, NSWindow, NSWindowCollectionBehavior, NSWindowSharingType};
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize};
 
 use super::PrintScreenHandler;
 use crate::capture::imp::{rect_from_cg, rect_to_cg, scale};
 use crate::capture::Rect;
 
-/// Style et position sauvegardés pour revenir à la fenêtre « normale ».
-#[derive(Clone, Copy, Debug)]
-pub struct SavedWindow {
-    style: NSWindowStyleMask,
-    rect: Rect,
-}
-
-/// Fenêtre principale, identifiée par le pointeur de sa NSView (fourni par winit).
-#[derive(Clone, Copy, Debug)]
+/// Fenêtre native identifiée par le pointeur de sa NSView : la fenêtre principale (fournie par
+/// winit) ou une fenêtre flottante (sélection, miniature, barre d'enregistrement).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Window(pub isize);
 
 /// Hauteur de l'écran principal en points : les coordonnées Cocoa partent du bas de cet écran.
@@ -60,9 +51,14 @@ impl Window {
         Some(from_cocoa(w.frame()))
     }
 
-    pub fn save(self) -> Option<SavedWindow> {
-        let (w, _) = self.ns_window()?;
-        Some(SavedWindow { style: w.styleMask(), rect: from_cocoa(w.frame()) })
+    /// Fenêtre de l'application portant exactement ce titre (fenêtre flottante egui).
+    pub fn find(title: &str) -> Option<Window> {
+        let mtm = MainThreadMarker::new()?;
+        let app = NSApplication::sharedApplication(mtm);
+        let windows = app.windows();
+        windows.iter().find_map(|w| {
+            (w.title().to_string() == title).then(|| w.contentView().map(|v| Window(Retained::as_ptr(&v) as isize)))?
+        })
     }
 
     fn set_visible(w: &NSWindow, visible: bool) {
@@ -70,28 +66,46 @@ impl Window {
         w.setIgnoresMouseEvents(!visible);
     }
 
-    pub fn restore(self, s: &SavedWindow) {
-        self.unminimize();
+    /// Masque la fenêtre (transparente et inerte) en la laissant dessiner.
+    pub fn cloak(self, cloaked: bool) {
+        if let Some((w, _)) = self.ns_window() {
+            Self::set_visible(&w, !cloaked);
+        }
+    }
+
+    pub fn is_minimized(self) -> bool {
+        self.ns_window().is_some_and(|(w, _)| w.isMiniaturized())
+    }
+
+    /// Fenêtre principale : la rendre invisible sans la déplacer ni la redimensionner.
+    pub fn hide(self) {
         let Some((w, mtm)) = self.ns_window() else { return };
-        w.setStyleMask(s.style);
-        w.setLevel(NSNormalWindowLevel);
-        w.setHasShadow(true);
+        Self::set_visible(&w, false);
+        w.setSharingType(NSWindowSharingType::NSWindowSharingNone);
+        unsafe {
+            w.orderBack(None);
+            // Rendre le clavier à l'application précédente.
+            NSApplication::sharedApplication(mtm).deactivate();
+        }
+    }
+
+    /// Fenêtre principale : la réafficher telle qu'elle était, au premier plan.
+    pub fn show(self) {
+        let Some((w, mtm)) = self.ns_window() else { return };
+        if w.isMiniaturized() {
+            unsafe { w.deminiaturize(None) };
+        }
+        self.rescue();
         w.setSharingType(NSWindowSharingType::NSWindowSharingReadOnly);
-        unsafe { w.setCollectionBehavior(NSWindowCollectionBehavior::Default) };
         Self::set_visible(&w, true);
-        // L'écran d'origine a pu être débranché pendant que la fenêtre était cachée.
-        w.setFrame_display(to_cocoa(crate::capture::fit_on_screen(s.rect)), true);
         w.makeKeyAndOrderFront(None);
         bring_app_to_front(mtm);
     }
 
-    /// Fenêtre sans bordure, au-dessus de tout (barre des menus comprise), placée exactement sur `r`.
-    pub fn popup(self, r: Rect, exclude_from_capture: bool, activate: bool) {
-        self.unminimize();
+    /// Fenêtre flottante : placée exactement sur `r`, au-dessus de tout (barre des menus comprise).
+    pub fn place_floating(self, r: Rect, activate: bool, exclude_from_capture: bool) {
         let Some((w, mtm)) = self.ns_window() else { return };
-        w.setStyleMask(NSWindowStyleMask::Borderless);
         w.setLevel(NSStatusWindowLevel);
-        w.setHasShadow(false);
         w.setSharingType(if exclude_from_capture {
             NSWindowSharingType::NSWindowSharingNone
         } else {
@@ -100,7 +114,6 @@ impl Window {
         unsafe {
             w.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary)
         };
-        Self::set_visible(&w, true);
         w.setFrame_display(to_cocoa(r), true);
         if activate {
             bring_app_to_front(mtm);
@@ -110,42 +123,8 @@ impl Window {
         }
     }
 
-    /// « Masque » la fenêtre en la rendant transparente et inerte : une fenêtre réellement
-    /// masquée ne serait plus redessinée par eframe, qui ne traiterait plus les raccourcis.
-    pub fn park(self) {
-        let Some((w, mtm)) = self.ns_window() else { return };
-        Self::set_visible(&w, false);
-        w.setSharingType(NSWindowSharingType::NSWindowSharingNone);
-        w.setLevel(NSNormalWindowLevel);
-        unsafe {
-            w.orderBack(None);
-            // Rendre le clavier à l'application précédente.
-            NSApplication::sharedApplication(mtm).deactivate();
-        }
-    }
-
     /// Les fenêtres macOS ont déjà des coins arrondis.
     pub fn round_corners(self, _round: bool) {}
-
-    pub fn ensure_rect(self, r: Rect) {
-        if self.rect() != Some(r) {
-            if let Some((w, _)) = self.ns_window() {
-                w.setFrame_display(to_cocoa(r), true);
-            }
-        }
-    }
-
-    /// Sort la fenêtre du Dock si elle a été réduite. Renvoie `true` si elle l'était.
-    /// AppKit n'est utilisable que depuis le thread principal : ailleurs (surveillance), sans effet.
-    pub fn unminimize(self) -> bool {
-        let Some((w, _)) = self.ns_window() else { return false };
-        if !w.isMiniaturized() {
-            return false;
-        }
-        unsafe { w.deminiaturize(None) };
-        crate::diag::log("fenêtre réduite : restaurée");
-        true
-    }
 
     /// Replace la fenêtre sur un écran branché si elle est restée sur un écran débranché.
     pub fn rescue(self) {
@@ -160,14 +139,25 @@ impl Window {
         }
     }
 
-    pub fn focus(self) {
-        self.unminimize();
-        self.rescue();
-        let Some((w, mtm)) = self.ns_window() else { return };
-        Self::set_visible(&w, true);
-        w.makeKeyAndOrderFront(None);
-        bring_app_to_front(mtm);
+    /// Déplacement en cours par l'utilisateur : AppKit gère lui-même les changements d'échelle.
+    pub fn is_moving(self) -> bool {
+        false
     }
+
+    /// État lisible pour le journal.
+    pub fn describe(self) -> String {
+        format!("{:?} réduite={}", self.rect(), self.is_minimized())
+    }
+}
+
+/// AppKit gère lui-même le passage d'un écran à l'autre.
+pub fn fix_dpi_changes(_win: Window) {}
+
+pub fn set_wanted_size(_points: (f32, f32)) {}
+
+/// Unités de `Rect` par point pour une fenêtre placée en `(x, y)` : l'échelle commune sur Mac.
+pub fn scale_at(_x: i32, _y: i32) -> f32 {
+    scale() as f32
 }
 
 /// Vrai si notre fenêtre est au premier plan.
@@ -210,14 +200,19 @@ pub fn acquire_single_instance(_activate_existing: bool) -> bool {
 }
 
 /// Sur Mac, relancer l'application la réactive déjà (Dock / Finder).
-pub fn activation_listener(_f: impl Fn() + Send + 'static) {}
+pub fn activation_listener(_f: impl Fn(Option<String>) + Send + 'static) {}
+
+/// Pilotage par `--cmd` : non pris en charge sur Mac.
+pub fn send_command(_cmd: &str) -> bool {
+    false
+}
 
 /// Envoie un fichier dans la Corbeille (récupérable).
 pub fn move_to_recycle_bin(path: &Path) -> anyhow::Result<()> {
     use objc2_foundation::{NSFileManager, NSString, NSURL};
     let url = unsafe { NSURL::fileURLWithPath(&NSString::from_str(&path.to_string_lossy())) };
     unsafe { NSFileManager::defaultManager().trashItemAtURL_resultingItemURL_error(&url, None) }
-        .map_err(|e| anyhow::anyhow!("suppression impossible : {}", e.localizedDescription()))
+        .map_err(|e| anyhow::anyhow!("{}", crate::i18n::trf("suppression impossible : {0}", &[&e.localizedDescription()])))
 }
 
 /// Ouvre un fichier avec l'application par défaut.
@@ -258,7 +253,7 @@ pub fn ocr(img: &image::RgbaImage) -> anyhow::Result<String> {
         let requests: Retained<NSArray<VNRequest>> = NSArray::from_slice(&[request.as_super().as_super()]);
         handler
             .performRequests_error(&requests)
-            .map_err(|e| anyhow::anyhow!("OCR impossible : {}", e.localizedDescription()))?;
+            .map_err(|e| anyhow::anyhow!("{}", crate::i18n::trf("OCR impossible : {0}", &[&e.localizedDescription()])))?;
         let mut out = String::new();
         if let Some(results) = request.results() {
             for obs in results.iter() {

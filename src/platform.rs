@@ -19,6 +19,12 @@ pub const MOD_WIN: u8 = 8;
 pub const KEY_SNIP: u8 = 0x40;
 /// Bit ajouté au masque : ne pas déclencher, seulement indiquer s'il faut consommer la touche.
 pub const NO_FIRE: u8 = 0x80;
+/// Masque transmis pour Échap pendant une capture.
+pub const KEY_ESCAPE: u8 = 0x20;
+
+/// Une capture est en cours (délai, prise de l'écran ou sélection) : Échap l'annule, quelle que
+/// soit l'application au premier plan.
+pub static CAPTURE_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Rappel du raccourci Impr. écran : reçoit le masque, renvoie `true` si la touche est consommée.
 pub type PrintScreenHandler = Box<dyn Fn(u8) -> bool + Send + Sync>;
@@ -32,6 +38,12 @@ pub fn sc(s: &str) -> String {
     }
 }
 
-/// Nom du gestionnaire de fichiers.
-pub const FILE_MANAGER: &str = if cfg!(target_os = "macos") { "le Finder" } else { "l'Explorateur" };
+/// « Afficher dans l'Explorateur » (Windows) ou « Afficher dans le Finder » (macOS).
+pub fn reveal_label() -> &'static str {
+    if cfg!(target_os = "macos") {
+        crate::i18n::tr("Afficher dans le Finder")
+    } else {
+        crate::i18n::tr("Afficher dans l'Explorateur")
+    }
+}
 

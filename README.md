@@ -49,6 +49,21 @@ Un journal est écrit dans `%LOCALAPPDATA%\ScreenCapture\logs\screencapture.log`
 
 Si l'application ne répond plus, la relancer depuis le menu Démarrer : l'instance bloquée s'arrête (le journal note l'étape en cause) et la nouvelle prend le relais.
 
+## Pilotage et validation (Windows)
+
+L'instance en cours se pilote en ligne de commande : `ScreenCapture.exe --cmd <commande>`, avec `region`, `full`, `window`, `last`, `delayed`, `video`, `show`, `hide`, `cancel` ou `quit`.
+
+Échap annule une capture en cours (compte à rebours d'une capture différée ou sélection), quelle que soit l'application au premier plan.
+
+La campagne de validation des fenêtres (`examples/validate.rs`) pilote l'application et vérifie l'état réel des fenêtres (position, taille, réduite, masquée, barre des tâches, réactivité), sur un ou plusieurs écrans d'échelles différentes, avec un film à 60 images/s pour détecter les apparitions furtives :
+
+```powershell
+cargo build --release
+cargo run --release --example validate -- tests\validation\mon-essai
+```
+
+Le rapport `RAPPORT.md` est écrit dans le dossier indiqué. Les réglages de l'utilisateur sont sauvegardés puis restaurés, et les captures de test vont dans un dossier temporaire.
+
 ## Compilation automatique
 
 Le workflow GitHub Actions `Build` compile l'installeur Windows et le `.dmg` macOS : lancement manuel depuis l'onglet Actions, ou automatique à chaque tag `vX.Y.Z`, qui joint les fichiers à la Release.

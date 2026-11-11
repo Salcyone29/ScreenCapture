@@ -1,6 +1,6 @@
 [package]
 name = "screencapture"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2021"
 description = "Outil de capture d'écran et d'annotation en Rust avec un design Material 3 (Windows et macOS)"
 
@@ -24,6 +24,7 @@ chrono = "0.4"
 dirs = "5"
 anyhow = "1"
 raw-window-handle = "0.6"
+sys-locale = "0.3"
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.58"
@@ -45,6 +46,7 @@ features = [
     "Win32_System_Threading",
     "Win32_System_Variant",
     "Win32_System_WinRT",
+    "Win32_UI_HiDpi",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_Shell",
     "Win32_UI_Shell_PropertiesSystem",

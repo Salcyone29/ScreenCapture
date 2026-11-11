@@ -4,30 +4,23 @@ use std::os::windows::process::CommandExt;
 use std::path::Path;
 
 use windows::core::{w, HSTRING, PCWSTR};
-use windows::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS, HWND, RECT};
+use windows::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS, HWND, POINT, RECT};
 use windows::Win32::System::Threading::CreateMutexW;
 use windows::Win32::UI::Shell::{ShellExecuteW, SHFileOperationW, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_SILENT, FO_DELETE, SHFILEOPSTRUCTW};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowLongPtrW, GetWindowRect, SetForegroundWindow, SetWindowDisplayAffinity, SetWindowLongPtrW, SetWindowPos,
-    ShowWindow, GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, HWND_NOTOPMOST, HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOSIZE,
-    SWP_SHOWWINDOW, SW_HIDE, SW_SHOW, WDA_EXCLUDEFROMCAPTURE, WDA_NONE, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
-    WS_POPUP, WS_VISIBLE,
+    ShowWindow, GWL_EXSTYLE, HWND_NOTOPMOST, HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_HIDE,
+    WDA_EXCLUDEFROMCAPTURE, WDA_NONE, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 
-use super::{PrintScreenHandler, KEY_SNIP, MOD_ALT, MOD_CTRL, MOD_SHIFT, MOD_WIN, NO_FIRE};
+use super::{PrintScreenHandler, KEY_ESCAPE, KEY_SNIP, MOD_ALT, MOD_CTRL, MOD_SHIFT, MOD_WIN, NO_FIRE};
 use crate::capture::Rect;
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-/// Style et position sauvegardés pour revenir à la fenêtre « normale ».
-#[derive(Clone, Copy, Debug)]
-pub struct SavedWindow {
-    style: isize,
-    ex_style: isize,
-    rect: Rect,
-}
-
-#[derive(Clone, Copy, Debug)]
+/// Fenêtre native : la fenêtre principale (espace de travail / éditeur) ou une fenêtre flottante
+/// (sélection, miniature, barre d'enregistrement), chacune étant une fenêtre egui distincte.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Window(pub isize);
 
 impl Window {
@@ -36,7 +29,7 @@ impl Window {
     }
 
     pub fn is_valid(self) -> bool {
-        self.0 != 0
+        self.0 != 0 && unsafe { windows::Win32::UI::WindowsAndMessaging::IsWindow(self.hwnd()) }.as_bool()
     }
 
     pub fn rect(self) -> Option<Rect> {
@@ -45,107 +38,124 @@ impl Window {
         Some(Rect::new(r.left, r.top, r.right - r.left, r.bottom - r.top))
     }
 
-    /// Style et position « normaux » ; pour une fenêtre réduite, la position qu'elle retrouvera
-    /// (et non le rectangle -32000 de l'état réduit), sans le style WS_MINIMIZE.
-    pub fn save(self) -> Option<SavedWindow> {
-        use windows::Win32::UI::WindowsAndMessaging::{GetWindowPlacement, IsIconic, WINDOWPLACEMENT, WS_MINIMIZE};
-        if !self.is_valid() {
-            return None;
-        }
-        unsafe {
-            let style = GetWindowLongPtrW(self.hwnd(), GWL_STYLE) & !(WS_MINIMIZE.0 as isize);
-            let ex_style = GetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE);
-            let rect = if IsIconic(self.hwnd()).as_bool() {
-                let mut wp = WINDOWPLACEMENT { length: std::mem::size_of::<WINDOWPLACEMENT>() as u32, ..Default::default() };
-                GetWindowPlacement(self.hwnd(), &mut wp).ok()?;
-                // rcNormalPosition est en coordonnées de la zone de travail (barre des tâches exclue).
-                let n = wp.rcNormalPosition;
-                let r = Rect::new(n.left, n.top, n.right - n.left, n.bottom - n.top);
-                let (m, wa) = (crate::capture::monitor_at(r.x, r.y), crate::capture::work_area_at(r.x, r.y));
-                Rect::new(r.x + wa.x - m.x, r.y + wa.y - m.y, r.w, r.h)
-            } else {
-                self.rect()?
-            };
-            Some(SavedWindow { style, ex_style, rect })
-        }
+    /// Fenêtre de ce processus portant exactement ce titre (fenêtre flottante egui).
+    pub fn find(title: &str) -> Option<Window> {
+        use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, GetWindowThreadProcessId};
+        let h = unsafe { FindWindowW(None, &HSTRING::from(title)) }.ok()?;
+        let mut pid = 0u32;
+        unsafe { GetWindowThreadProcessId(h, Some(&mut pid)) };
+        (pid == std::process::id()).then_some(Window(h.0 as isize))
     }
 
-    pub fn restore(self, s: &SavedWindow) {
+    /// Masque la fenêtre à l'écran (DWM) sans la cacher pour Windows : elle reste à sa place et
+    /// à sa taille, et eframe continue de la dessiner, donc les raccourcis restent actifs.
+    pub fn cloak(self, cloaked: bool) {
+        use windows::Win32::Foundation::BOOL;
+        use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_CLOAK};
         if !self.is_valid() {
             return;
         }
-        self.unminimize();
+        let value = BOOL::from(cloaked);
         unsafe {
-            // Masquer puis réafficher pour que la barre des tâches prenne en compte le style.
-            let _ = ShowWindow(self.hwnd(), SW_HIDE);
-            SetWindowLongPtrW(self.hwnd(), GWL_STYLE, s.style);
-            SetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE, s.ex_style);
-            let _ = SetWindowDisplayAffinity(self.hwnd(), WDA_NONE);
-            // L'écran d'origine a pu être débranché pendant que la fenêtre était garée.
-            let r = crate::capture::fit_on_screen(s.rect);
-            let _ = SetWindowPos(self.hwnd(), HWND_NOTOPMOST, r.x, r.y, r.w, r.h, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
-            let _ = SetForegroundWindow(self.hwnd());
+            let _ = DwmSetWindowAttribute(self.hwnd(), DWMWA_CLOAK, &value as *const _ as *const _, std::mem::size_of::<BOOL>() as u32);
         }
     }
 
-    fn set_tool_style(self, popup: bool) {
+    pub fn is_minimized(self) -> bool {
+        use windows::Win32::UI::WindowsAndMessaging::IsIconic;
+        self.is_valid() && unsafe { IsIconic(self.hwnd()) }.as_bool()
+    }
+
+    /// Bouton dans la barre des tâches (fenêtre d'application) ou non (fenêtre outil).
+    /// La barre des tâches ne relit ce style qu'au réaffichage : on masque/réaffiche donc la
+    /// fenêtre, ce qui ne se voit pas quand elle est masquée par DWM.
+    fn set_taskbar_button(self, visible: bool) {
+        use windows::Win32::UI::WindowsAndMessaging::{SW_SHOWMINNOACTIVE, SW_SHOWNA};
         unsafe {
-            let _ = ShowWindow(self.hwnd(), SW_HIDE);
-            if popup {
-                SetWindowLongPtrW(self.hwnd(), GWL_STYLE, (WS_POPUP.0 | WS_VISIBLE.0) as isize);
-            }
             let ex = GetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE) as u32;
-            let ex = (ex & !WS_EX_APPWINDOW.0) | WS_EX_TOOLWINDOW.0;
-            SetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE, ex as isize);
+            let new = if visible { (ex | WS_EX_APPWINDOW.0) & !WS_EX_TOOLWINDOW.0 } else { (ex & !WS_EX_APPWINDOW.0) | WS_EX_TOOLWINDOW.0 };
+            if new == ex {
+                return;
+            }
+            let minimized = self.is_minimized();
+            let _ = ShowWindow(self.hwnd(), SW_HIDE);
+            SetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE, new as isize);
+            let _ = ShowWindow(self.hwnd(), if minimized { SW_SHOWMINNOACTIVE } else { SW_SHOWNA });
         }
     }
 
-    /// Fenêtre sans bordure, au premier plan, placée exactement sur `r` (pixels physiques).
-    pub fn popup(self, r: Rect, exclude_from_capture: bool, activate: bool) {
+    /// Fenêtre principale : la rendre invisible (zone de notification). Elle n'est ni déplacée
+    /// ni redimensionnée, et n'apparaît plus dans la barre des tâches ni dans Alt+Tab.
+    pub fn hide(self) {
         if !self.is_valid() {
             return;
         }
-        self.unminimize();
-        self.set_tool_style(true);
+        self.cloak(true);
+        self.set_taskbar_button(false);
+    }
+
+    /// Fenêtre principale : la réafficher telle qu'elle était, restaurée si elle était réduite,
+    /// ramenée sur un écran branché si le sien a été débranché, et au premier plan.
+    pub fn show(self) {
+        use windows::Win32::UI::WindowsAndMessaging::SW_RESTORE;
+        if !self.is_valid() {
+            return;
+        }
+        self.set_taskbar_button(true);
         unsafe {
-            let _ = SetWindowDisplayAffinity(
-                self.hwnd(),
-                if exclude_from_capture { WDA_EXCLUDEFROMCAPTURE } else { WDA_NONE },
-            );
-            let mut flags = SWP_FRAMECHANGED | SWP_SHOWWINDOW;
+            if self.is_minimized() {
+                let _ = ShowWindow(self.hwnd(), SW_RESTORE);
+            }
+        }
+        self.rescue();
+        self.cloak(false);
+        self.force_foreground();
+    }
+
+    /// Fenêtre flottante : placée exactement sur `r` (pixels physiques), au-dessus de tout, sans
+    /// bouton dans la barre des tâches. `exclude_from_capture` : invisible pour les captures et
+    /// les vidéos (barre d'enregistrement).
+    pub fn place_floating(self, r: Rect, activate: bool, exclude_from_capture: bool) {
+        if !self.is_valid() {
+            return;
+        }
+        unsafe {
+            let _ = SetWindowDisplayAffinity(self.hwnd(), if exclude_from_capture { WDA_EXCLUDEFROMCAPTURE } else { WDA_NONE });
+            let ex = GetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE) as u32;
+            SetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE, ((ex & !WS_EX_APPWINDOW.0) | WS_EX_TOOLWINDOW.0) as isize);
+            let mut flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
             if !activate {
                 flags |= SWP_NOACTIVATE;
             }
             let _ = SetWindowPos(self.hwnd(), HWND_TOPMOST, r.x, r.y, r.w, r.h, flags);
-            if activate {
+        }
+        if activate {
+            self.force_foreground();
+        }
+    }
+
+    /// Premier plan, même quand une autre application l'a (Windows le refuse alors) : la
+    /// sélection doit recevoir le clavier (Échap, Entrée) dès qu'elle s'ouvre.
+    fn force_foreground(self) {
+        use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+        use windows::Win32::UI::WindowsAndMessaging::{BringWindowToTop, GetForegroundWindow, GetWindowThreadProcessId};
+        unsafe {
+            if SetForegroundWindow(self.hwnd()).as_bool() && GetForegroundWindow() == self.hwnd() {
+                return;
+            }
+            let fg = GetForegroundWindow();
+            let fg_thread = GetWindowThreadProcessId(fg, None);
+            let me = GetCurrentThreadId();
+            if fg_thread != 0 && fg_thread != me {
+                let _ = AttachThreadInput(me, fg_thread, true);
+                let _ = BringWindowToTop(self.hwnd());
                 let _ = SetForegroundWindow(self.hwnd());
+                let _ = AttachThreadInput(me, fg_thread, false);
             }
         }
     }
 
-    /// « Masque » la fenêtre en la garant hors écran, sans bouton dans la barre des tâches.
-    /// Une fenêtre réellement masquée ne serait plus rafraîchie par eframe, et l'application
-    /// ne traiterait plus les raccourcis ni l'icône de notification.
-    pub fn park(self) {
-        if !self.is_valid() {
-            return;
-        }
-        self.set_tool_style(false);
-        unsafe {
-            let _ = SetWindowDisplayAffinity(self.hwnd(), WDA_EXCLUDEFROMCAPTURE);
-            let _ = SetWindowPos(
-                self.hwnd(),
-                HWND_BOTTOM,
-                -32000,
-                -32000,
-                0,
-                0,
-                SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW,
-            );
-        }
-    }
-
-    /// Coins arrondis DWM (Windows 11) pour les fenêtres flottantes ; sans effet ailleurs.
+    /// Coins arrondis DWM (Windows 11) ; sans effet ailleurs.
     pub fn round_corners(self, round: bool) {
         use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DEFAULT, DWMWCP_ROUND};
         if !self.is_valid() {
@@ -162,57 +172,120 @@ impl Window {
         }
     }
 
-    pub fn ensure_rect(self, r: Rect) {
-        if self.rect() != Some(r) {
-            unsafe {
-                let _ = SetWindowPos(self.hwnd(), HWND_TOPMOST, r.x, r.y, r.w, r.h, SWP_NOACTIVATE);
-            }
-        }
-    }
-
-    /// Sort la fenêtre de l'état réduit avant de l'afficher ou de la placer : SetWindowPos ne
-    /// restaure pas une fenêtre réduite. Synchrone depuis le thread de la fenêtre (l'appel suivant
-    /// voit la fenêtre restaurée), asynchrone depuis un autre thread (surveillance), pour ne jamais
-    /// attendre un thread bloqué. Renvoie `true` si la fenêtre était réduite.
-    pub fn unminimize(self) -> bool {
-        use windows::Win32::System::Threading::GetCurrentThreadId;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            GetWindowThreadProcessId, IsIconic, ShowWindowAsync, SW_SHOWNOACTIVATE,
-        };
-        if !self.is_valid() || !unsafe { IsIconic(self.hwnd()) }.as_bool() {
-            return false;
-        }
-        unsafe {
-            if GetWindowThreadProcessId(self.hwnd(), None) == GetCurrentThreadId() {
-                let _ = ShowWindow(self.hwnd(), SW_SHOWNOACTIVATE);
-            } else {
-                let _ = ShowWindowAsync(self.hwnd(), SW_SHOWNOACTIVATE);
-            }
-        }
-        crate::diag::log("fenêtre réduite : restaurée");
-        true
-    }
-
     /// Replace la fenêtre sur un écran connecté si elle est restée sur un écran débranché
-    /// (sans effet si elle est réduite ou garée hors écran volontairement).
+    /// (sans effet si elle est réduite).
     pub fn rescue(self) {
-        let Some(r) = self.rect().filter(|r| r.x > -30000 && r.y > -30000) else {
+        if self.is_minimized() {
             return;
-        };
+        }
+        let Some(r) = self.rect() else { return };
         let fit = crate::capture::fit_on_screen(r);
         if fit != r {
+            crate::diag::log(&format!("fenêtre hors écran {r:?} : replacée en {fit:?}"));
             unsafe {
                 let _ = SetWindowPos(self.hwnd(), HWND_NOTOPMOST, fit.x, fit.y, fit.w, fit.h, SWP_NOACTIVATE);
             }
         }
     }
 
-    pub fn focus(self) {
-        self.unminimize();
-        self.rescue();
+    /// Vrai pendant que l'utilisateur déplace ou redimensionne la fenêtre (boucle modale de Windows).
+    pub fn is_moving(self) -> bool {
+        use windows::Win32::UI::WindowsAndMessaging::{GetGUIThreadInfo, GetWindowThreadProcessId, GUITHREADINFO, GUI_INMOVESIZE};
+        if !self.is_valid() {
+            return false;
+        }
         unsafe {
-            let _ = ShowWindow(self.hwnd(), SW_SHOW);
-            let _ = SetForegroundWindow(self.hwnd());
+            let thread = GetWindowThreadProcessId(self.hwnd(), None);
+            let mut info = GUITHREADINFO { cbSize: std::mem::size_of::<GUITHREADINFO>() as u32, ..Default::default() };
+            GetGUIThreadInfo(thread, &mut info).is_ok() && info.flags.contains(GUI_INMOVESIZE)
+        }
+    }
+
+    /// État lisible pour le journal : position, réduite, masquée.
+    pub fn describe(self) -> String {
+        use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+        let mut cloaked = 0u32;
+        unsafe {
+            let _ = DwmGetWindowAttribute(self.hwnd(), DWMWA_CLOAKED, &mut cloaked as *mut _ as *mut _, 4);
+        }
+        format!("{:?} réduite={} masquée={}", self.rect(), self.is_minimized(), cloaked != 0)
+    }
+}
+
+/// Taille voulue de la fenêtre principale, en points (zone cliente), tenue à jour par l'application.
+static WANTED_POINTS: std::sync::Mutex<Option<(f32, f32)>> = std::sync::Mutex::new(None);
+
+/// Mémorise la taille voulue de la fenêtre principale (points), appliquée à chaque changement d'écran.
+pub fn set_wanted_size(points: (f32, f32)) {
+    if let Ok(mut w) = WANTED_POINTS.lock() {
+        *w = Some(points);
+    }
+}
+
+/// Corrige le passage d'un écran à un autre d'échelle différente (100 % → 125 %…). winit recalcule
+/// lui-même la taille puis pousse la fenêtre vers le nouvel écran ; selon la disposition des écrans,
+/// la fenêtre bascule alors d'un écran à l'autre et rétrécit ou grossit en cascade pendant le
+/// glisser. On laisse winit traiter le message (nouvelle échelle pour l'interface) puis on impose la
+/// taille voulue (points × nouvelle échelle), en gardant la fenêtre sous le pointeur.
+pub fn fix_dpi_changes(win: Window) {
+    use windows::Win32::UI::Shell::SetWindowSubclass;
+    if win.is_valid() {
+        unsafe {
+            let _ = SetWindowSubclass(win.hwnd(), Some(dpi_subclass), 1, 0);
+        }
+    }
+}
+
+unsafe extern "system" fn dpi_subclass(
+    hwnd: HWND,
+    msg: u32,
+    wparam: windows::Win32::Foundation::WPARAM,
+    lparam: windows::Win32::Foundation::LPARAM,
+    _id: usize,
+    _data: usize,
+) -> windows::Win32::Foundation::LRESULT {
+    use windows::Win32::UI::HiDpi::AdjustWindowRectExForDpi;
+    use windows::Win32::UI::Shell::DefSubclassProc;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, IsZoomed, GWL_STYLE, SWP_NOZORDER, WINDOW_EX_STYLE, WINDOW_STYLE, WM_DPICHANGED,
+    };
+    if msg != WM_DPICHANGED {
+        return DefSubclassProc(hwnd, msg, wparam, lparam);
+    }
+    let suggested = *(lparam.0 as *const RECT);
+    let result = DefSubclassProc(hwnd, msg, wparam, lparam);
+    let wanted = WANTED_POINTS.lock().ok().and_then(|w| *w);
+    let Some((pw, ph)) = wanted.filter(|_| !IsZoomed(hwnd).as_bool()) else { return result };
+    let dpi = (wparam.0 & 0xFFFF) as u32;
+    let scale = dpi as f32 / 96.0;
+    // Zone cliente voulue à la nouvelle échelle, plus le cadre de la fenêtre à cette échelle.
+    let mut r = RECT { left: 0, top: 0, right: (pw * scale).round() as i32, bottom: (ph * scale).round() as i32 };
+    let style = WINDOW_STYLE(GetWindowLongPtrW(hwnd, GWL_STYLE) as u32);
+    let ex = WINDOW_EX_STYLE(GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32);
+    let _ = AdjustWindowRectExForDpi(&mut r, style, false, ex, dpi);
+    let (w, h) = (r.right - r.left, r.bottom - r.top);
+    // Garder le pointeur à la même proportion horizontale de la barre de titre (glisser en cours).
+    let mut cursor = POINT::default();
+    let _ = GetCursorPos(&mut cursor);
+    let sw = (suggested.right - suggested.left).max(1);
+    let ratio = ((cursor.x - suggested.left) as f32 / sw as f32).clamp(0.0, 1.0);
+    let x = if cursor.x >= suggested.left && cursor.x <= suggested.right { cursor.x - (ratio * w as f32) as i32 } else { suggested.left };
+    let _ = SetWindowPos(hwnd, None, x, suggested.top, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    result
+}
+
+/// Échelle (pixels par point) de l'écran contenant le point (pixels physiques).
+pub fn scale_at(x: i32, y: i32) -> f32 {
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::Graphics::Gdi::{MonitorFromPoint, MONITOR_DEFAULTTONEAREST};
+    use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+    unsafe {
+        let mon = MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST);
+        let (mut dx, mut dy) = (96u32, 96u32);
+        if GetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, &mut dx, &mut dy).is_ok() {
+            dx as f32 / 96.0
+        } else {
+            1.0
         }
     }
 }
@@ -220,6 +293,7 @@ impl Window {
 static PRINTSCREEN_HANDLER: std::sync::OnceLock<PrintScreenHandler> = std::sync::OnceLock::new();
 static PRINTSCREEN_DOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static SNIP_SWALLOWED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static ESC_SWALLOWED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Intercepte Impr. écran (et Win+Maj+S) par un hook clavier bas niveau. `RegisterHotKey` ne suffit pas :
 /// d'autres outils de capture (ou Windows) consomment souvent cette touche avant lui.
@@ -268,6 +342,22 @@ unsafe extern "system" fn keyboard_proc(
 
     if code >= 0 {
         let kb = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
+        // Échap pendant une capture : l'annuler (et ne pas transmettre la touche à l'application
+        // au premier plan). Le reste du temps, Échap n'est pas touché.
+        if kb.vkCode == 0x1B {
+            let msg = wparam.0 as u32;
+            let down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
+            if down && super::CAPTURE_ACTIVE.load(Ordering::SeqCst) {
+                if let Some(h) = PRINTSCREEN_HANDLER.get() {
+                    if h(KEY_ESCAPE) {
+                        ESC_SWALLOWED.store(true, Ordering::SeqCst);
+                        return LRESULT(1);
+                    }
+                }
+            } else if !down && ESC_SWALLOWED.swap(false, Ordering::SeqCst) {
+                return LRESULT(1);
+            }
+        }
         let is_prt = kb.vkCode == VK_SNAPSHOT.0 as u32;
         let is_s = kb.vkCode == 0x53;
         if let (true, Some(h)) = (is_prt || is_s, PRINTSCREEN_HANDLER.get()) {
@@ -322,6 +412,8 @@ pub fn acquire_single_instance(activate_existing: bool) -> bool {
             return false;
         }
         crate::diag::log("une autre instance tourne : demande d'affichage");
+        // Instance lancée par l'utilisateur (menu Démarrer) : céder le premier plan à l'autre.
+        let _ = windows::Win32::UI::WindowsAndMessaging::AllowSetForegroundWindow(windows::Win32::UI::WindowsAndMessaging::ASFW_ANY);
         if let Ok(ev) = OpenEventW(EVENT_MODIFY_STATE, false, ACTIVATE_EVENT) {
             let _ = SetEvent(ev);
         }
@@ -337,7 +429,8 @@ pub fn acquire_single_instance(activate_existing: bool) -> bool {
 const ACTIVATE_EVENT: PCWSTR = w!("Local\\ScreenCapture.Rust.Activate");
 
 /// Appelle `f` (depuis un thread dédié) chaque fois qu'une nouvelle instance est lancée.
-pub fn activation_listener(f: impl Fn() + Send + 'static) {
+/// `f` reçoit la commande transmise par `send_command`, ou `None` pour un simple affichage.
+pub fn activation_listener(f: impl Fn(Option<String>) + Send + 'static) {
     use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject, INFINITE};
     let Ok(ev) = (unsafe { CreateEventW(None, false, false, ACTIVATE_EVENT) }) else { return };
     let ev = ev.0 as isize;
@@ -346,8 +439,30 @@ pub fn activation_listener(f: impl Fn() + Send + 'static) {
         if unsafe { WaitForSingleObject(h, INFINITE) } != windows::Win32::Foundation::WAIT_OBJECT_0 {
             return;
         }
-        f();
+        let cmd = std::fs::read_to_string(command_file()).ok().map(|c| c.trim().to_string()).filter(|c| !c.is_empty());
+        let _ = std::fs::remove_file(command_file());
+        f(cmd);
     });
+}
+
+fn command_file() -> std::path::PathBuf {
+    std::env::temp_dir().join("ScreenCapture.Rust.command")
+}
+
+/// Transmet une commande à l'instance en cours (`ScreenCapture.exe --cmd region`…).
+/// Renvoie `false` si aucune instance ne tourne.
+pub fn send_command(cmd: &str) -> bool {
+    use windows::Win32::System::Threading::{OpenEventW, SetEvent, EVENT_MODIFY_STATE};
+    use windows::Win32::UI::WindowsAndMessaging::{AllowSetForegroundWindow, ASFW_ANY};
+    let Ok(ev) = (unsafe { OpenEventW(EVENT_MODIFY_STATE, false, ACTIVATE_EVENT) }) else { return false };
+    if std::fs::write(command_file(), cmd).is_err() {
+        return false;
+    }
+    unsafe {
+        // Cette instance vient d'être lancée par l'utilisateur : lui céder le premier plan.
+        let _ = AllowSetForegroundWindow(ASFW_ANY);
+        SetEvent(ev).is_ok()
+    }
 }
 
 /// Envoie un fichier dans la corbeille (récupérable).
@@ -362,7 +477,7 @@ pub fn move_to_recycle_bin(path: &Path) -> anyhow::Result<()> {
         ..Default::default()
     };
     let r = unsafe { SHFileOperationW(&mut op) };
-    anyhow::ensure!(r == 0, "suppression impossible (code {r})");
+    anyhow::ensure!(r == 0, "{}", crate::i18n::trf("suppression impossible (code {0})", &[&r]));
     Ok(())
 }
 

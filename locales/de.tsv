@@ -1,0 +1,353 @@
+# Deutsch — traductions de l'interface (français<TAB>traduction). \t = tabulation, \n = saut de ligne.
+ (dont {0} pour la taille maximale)	 (davon {0} wegen der Maximalgröße)
+ (taille maximale dépassée)	 (Maximalgröße überschritten)
+1 an	1 Jahr
+1 image ajoutée au dossier des captures	1 Bild zum Aufnahmeordner hinzugefügt
+30 jours	30 Tage
+7 jours	7 Tage
+90 jours	90 Tage
+APPROUVÉ	GENEHMIGT
+APRÈS	NACHHER
+AVANT	VORHER
+Accueil	Start
+Actif : {0}	Aktiv: {0}
+Actualiser	Aktualisieren
+Actualiser la liste	Liste aktualisieren
+Affiche les pixels agrandis et la couleur sous le curseur pendant la sélection	Zeigt beim Auswählen vergrößerte Pixel und die Farbe unter dem Mauszeiger
+Afficher dans l'Explorateur	Im Explorer anzeigen
+Afficher dans le Finder	Im Finder anzeigen
+Afficher le cadre d'enregistrement	Aufnahmerahmen anzeigen
+Ajouter une couleur	Farbe hinzufügen
+Ajuster à la fenêtre (Ctrl+0)	An Fenster anpassen (Strg+0)
+Alt	Alt
+Annuler	Abbrechen
+Annuler (Ctrl+Z)	Rückgängig (Strg+Z)
+Annuler l'enregistrement	Aufnahme abbrechen
+Apparence et démarrage	Darstellung und Start
+Appliquer	Anwenden
+Appliquer ce style à tous	Diesen Stil auf alle anwenden
+Appliquer la conservation ?	Aufbewahrung anwenden?
+Appliquer les raccourcis	Tastenkürzel übernehmen
+Appuyez sur {0} pour capturer une zone de l'écran.	Drücken Sie {0}, um einen Bildschirmbereich aufzunehmen.
+Après la capture	Nach der Aufnahme
+Après {0} s	Nach {0} s
+Arrière-plan	In den Hintergrund
+Arrêter	Stoppen
+Astuce : si Impr. écran ouvre l'Outil Capture de Windows, désactivez « Utiliser la touche Impr. écran pour ouvrir la capture d'écran » dans Paramètres Windows > Accessibilité > Clavier.	Tipp: Wenn die Druck-Taste das Windows-Snipping-Tool öffnet, deaktivieren Sie „Druck-Taste zum Öffnen der Bildschirmaufnahme verwenden“ unter Windows-Einstellungen > Barrierefreiheit > Tastatur.
+Astuce : ⌘⇧3, ⌘⇧4 et ⌘⇧5 sont réservés par macOS (Réglages Système > Clavier > Raccourcis clavier > Captures d'écran).	Tipp: ⌘⇧3, ⌘⇧4 und ⌘⇧5 sind von macOS reserviert (Systemeinstellungen > Tastatur > Tastaturkurzbefehle > Bildschirmfotos).
+Au-delà, les captures les plus anciennes sont supprimées	Darüber hinaus werden die ältesten Aufnahmen gelöscht
+Aucun	Keines
+Aucun micro branché ou activé dans Windows • non disponible en GIF	Kein Mikrofon angeschlossen oder in Windows aktiviert • nicht verfügbar für GIF
+Aucun raccourci	Kein Tastenkürzel
+Aucun texte détecté	Kein Text erkannt
+Aucune capture pour l'instant	Noch keine Aufnahmen
+Aucune image parmi les fichiers	Keine der Dateien ist ein Bild
+Aucune suppression automatique.	Keine automatische Löschung.
+Aucune zone précédente : sélectionnez une zone.	Kein vorheriger Bereich: Wählen Sie einen Bereich aus.
+Avec ce réglage, {0} seront {1} dès maintenant.	Mit dieser Einstellung werden {0} sofort {1}.
+Avec le son  •  M pour couper	Mit Ton  •  M zum Stummschalten
+BROUILLON	ENTWURF
+Bande à retirer	Zu entfernender Streifen
+Basculer le thème	Design wechseln
+Bordure	Rahmen
+Bulle de texte (U)	Sprechblase (U)
+CONFIDENTIEL	VERTRAULICH
+Capture	Aufnahme
+Capture de zone au lieu de l'Outil Capture de Windows (utile si la touche capture du clavier envoie ce raccourci)	Bereichsaufnahme statt Windows-Snipping-Tool (nützlich, wenn die Screenshot-Taste der Tastatur dieses Kürzel sendet)
+Capture de zone avec loupe, réticule et pipette, détection automatique des fenêtres	Bereichsaufnahme mit Lupe, Fadenkreuz und Pipette, automatische Fenstererkennung
+Capture différée ({0} s)	Verzögerte Aufnahme ({0} s)
+Capture désépinglée	Aufnahme gelöst
+Capture enregistrée	Aufnahme gespeichert
+Capture enregistrée et copiée	Aufnahme gespeichert und kopiert
+Capture refusée : autorisez ScreenCapture dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, puis relancez l'application.	Aufnahme verweigert: Erlauben Sie ScreenCapture unter Systemeinstellungen > Datenschutz & Sicherheit > Bildschirmaufnahme und starten Sie die App neu.
+Capture épinglée : elle ne sera jamais supprimée automatiquement	Aufnahme angeheftet: Sie wird nie automatisch gelöscht
+Capturer une zone	Bereich aufnehmen
+Capturer une zone\t{0}	Bereich aufnehmen\t{0}
+Ces images sont déjà dans le dossier des captures	Diese Bilder sind bereits im Aufnahmeordner
+Chaque capture est copiée immédiatement	Jede Aufnahme wird sofort kopiert
+Chaque capture est enregistrée dans le dossier	Jede Aufnahme wird im Ordner gespeichert
+Choisir	Auswählen
+Choix par défaut ; modifiable au moment de choisir la zone (touche M)	Standardauswahl; beim Auswählen des Bereichs änderbar (Taste M)
+Clair	Hell
+Clic : modifier  •  clic droit : retirer  •  + : ajouter	Klick: bearbeiten  •  Rechtsklick: entfernen  •  +: hinzufügen
+Cliquer pour apposer le tampon	Klicken, um den Stempel zu setzen
+Cliquer pour placer le numéro suivant	Klicken, um die nächste Nummer zu setzen
+Cliquer pour prélever une couleur	Klicken, um eine Farbe aufzunehmen
+Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer	Klicken zum Auswählen • Ziehen zum Verschieben • Entf zum Löschen
+Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider	Klicken zum Schreiben • Strg+Eingabe oder Esc zum Bestätigen
+Cliquer pour écrire • ⌘Entrée ou Échap pour valider	Klicken zum Schreiben • ⌘Return oder Esc zum Bestätigen
+Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)	Bild aus der Zwischenablage in den Aufnahmeordner einfügen (Strg+V)
+Conservation : rien à supprimer	Aufbewahrung: nichts zu löschen
+Conservation : {0}	Aufbewahrung: {0}
+Conservation : {0} {1}	Aufbewahrung: {0} {1}
+Conservation des captures	Aufbewahrung der Aufnahmen
+Conversion en GIF…	Umwandlung in GIF…
+Conçu par Stéphane Salou	Entworfen von Stéphane Salou
+Copier	Kopieren
+Copier dans le presse-papiers	In die Zwischenablage kopieren
+Copié dans le presse-papiers	In die Zwischenablage kopiert
+Copiée dans le presse-papiers	In die Zwischenablage kopiert
+Corbeille (récupérable)	Papierkorb (wiederherstellbar)
+Couleur d'accent	Akzentfarbe
+Couleur de la bordure	Rahmenfarbe
+Couleur {0} copiée	Farbe {0} kopiert
+Couleur {0} sur {1}	Farbe {0} von {1}
+Couleurs d'origine	Ursprüngliche Farben
+Couleurs de l'éditeur	Editorfarben
+Ctrl	Strg
+Dernière zone	Letzter Bereich
+Dernière zone\t{0}	Letzter Bereich\t{0}
+Dessine le pointeur de la souris dans la capture	Zeichnet den Mauszeiger in die Aufnahme
+Diagnostic	Diagnose
+Différée	Verzögert
+Dossier des captures	Aufnahmeordner
+Droit	Gerade
+Découpe	Schnitt
+Découper	Schneiden
+Découper une bande (X)	Streifen herausschneiden (X)
+Définitive	Endgültig
+Délai de la capture différée	Verzögerung der Aufnahme
+Démarrer réduit	Minimiert starten
+Déplacer une zone	Bereich verschieben
+Déplacer une zone (D)	Bereich verschieben (D)
+Déplacer à droite	Nach rechts verschieben
+Déplacer à gauche	Nach links verschieben
+Désactivé	Aus
+Désépingler	Lösen
+Effets à l'export	Exporteffekte
+Ellipse (E)	Ellipse (E)
+En cas de blocage, relancer ScreenCapture depuis le menu Démarrer remplace l'instance bloquée ; le journal indique alors l'étape en cause. Désactiver le journal masque cette section (triple-clic sur la version, page « À propos », pour la retrouver).	Bei einem Hänger ersetzt ein erneuter Start von ScreenCapture über das Startmenü die blockierte Instanz; das Protokoll zeigt dann den betroffenen Schritt. Das Deaktivieren des Protokolls blendet diesen Abschnitt aus (Dreifachklick auf die Version auf der Seite „Info“, um ihn wieder anzuzeigen).
+Enregistrement	Aufnahme
+Enregistrement annulé	Aufnahme abgebrochen
+Enregistrement impossible : {0}	Speichern nicht möglich: {0}
+Enregistrement vidéo MP4 / WebM / GIF avec micro (via FFmpeg)	Videoaufnahme in MP4 / WebM / GIF mit Mikrofon (über FFmpeg)
+Enregistrer	Speichern
+Enregistrer automatiquement	Automatisch speichern
+Enregistrer le curseur	Mauszeiger aufnehmen
+Enregistrer le son du micro	Mikrofonton aufnehmen
+Enregistrer sous… (Ctrl+Maj+S)	Speichern unter… (Strg+Umschalt+S)
+Enregistrer une vidéo\t{0}	Video aufnehmen\t{0}
+Enregistré : {0}	Gespeichert: {0}
+Entrée	Eingabe
+Entrée : appliquer le rognage • Échap : annuler	Eingabe: Zuschnitt anwenden • Esc: abbrechen
+Entrée : retirer la bande • Échap : annuler	Eingabe: Streifen entfernen • Esc: abbrechen
+Envoyé dans la Corbeille	In den Papierkorb verschoben
+Erreur : {0}	Fehler: {0}
+Erreur vidéo : {0}	Videofehler: {0}
+Espace de travail avec historique, recherche et filtres	Arbeitsbereich mit Verlauf, Suche und Filtern
+Exemples : PrintScreen, ctrl+PrintScreen, ctrl+shift+KeyS, alt+F9. Laisser vide pour désactiver.	Beispiele: PrintScreen, ctrl+PrintScreen, ctrl+shift+KeyS, alt+F9. Leer lassen zum Deaktivieren.
+Exemples : super+shift+Digit2 (⌘⇧2), ctrl+alt+KeyS, F13. Laisser vide pour désactiver.	Beispiele: super+shift+Digit2 (⌘⇧2), ctrl+alt+KeyS, F13. Leer lassen zum Deaktivieren.
+Extraction de texte (OCR Windows)	Texterkennung (Windows-OCR)
+Extraire le texte (OCR Windows)	Text extrahieren (Windows-OCR)
+FFmpeg introuvable. Installez-le ({0}) ou indiquez son chemin dans les paramètres.	FFmpeg nicht gefunden. Installieren Sie es ({0}) oder geben Sie den Pfad in den Einstellungen an.
+FFmpeg n'a produit aucun fichier (code {0})	FFmpeg hat keine Datei erzeugt (Code {0})
+Fenêtre	Fenster
+Fenêtre active	Aktives Fenster
+Fenêtre\t{0}	Fenster\t{0}
+Fermer	Schließen
+Fermer dans la zone de notification	In den Infobereich schließen
+Finalisation de la vidéo…	Video wird fertiggestellt…
+Flouter / pixeliser (B)	Weichzeichnen / verpixeln (B)
+Flèche (A)	Pfeil (A)
+Fonctionnalités	Funktionen
+Format	Format
+Format d'image	Bildformat
+Forme sélectionnée	Ausgewählte Form
+GetDIBits a échoué	GetDIBits fehlgeschlagen
+Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler	Ziehen: Bereich  •  Klick: Fenster  •  Eingabe: Vollbild  •  C: Farbe kopieren  •  Esc: abbrechen
+Glisser ou double-cliquer pour saisir (ex. 5, e, IV)	Ziehen oder doppelklicken zum Eingeben (z. B. 5, e, IV)
+Glisser pour choisir la bande à retirer	Ziehen, um den zu entfernenden Streifen zu wählen
+Glisser pour définir la zone à conserver	Ziehen, um den zu behaltenden Bereich festzulegen
+Glisser pour sélectionner une zone, puis la faire glisser • Suppr : la remettre en place	Bereich durch Ziehen auswählen, dann verschieben • Entf: zurücksetzen
+Glisser pour tracer • Défiler : déplacer • ⌘+défiler ou pincer : zoom	Ziehen zum Zeichnen • Scrollen: verschieben • ⌘+Scrollen oder Zusammenziehen: Zoom
+Glisser pour tracer • Maj : angles de 45°	Ziehen zum Zeichnen • Umschalt: 45°-Winkel
+Glisser pour tracer • Maj : forme régulière	Ziehen zum Zeichnen • Umschalt: regelmäßige Form
+Glisser pour tracer • Molette : défiler • Ctrl+molette : zoom	Ziehen zum Zeichnen • Mausrad: scrollen • Strg+Mausrad: Zoom
+Historique	Verlauf
+Horizontale	Horizontal
+I, II, III	I, II, III
+IMPORTANT	WICHTIG
+Image BMP	BMP-Bild
+Image JPEG	JPEG-Bild
+Image PNG	PNG-Bild
+Image collée : {0}	Bild eingefügt: {0}
+Image copiée dans le presse-papiers	Bild in die Zwischenablage kopiert
+Images	Bilder
+Images par seconde	Bilder pro Sekunde
+Impossible d'ouvrir l'image : {0}	Bild kann nicht geöffnet werden: {0}
+Impr. écran	Druck
+Inclure le curseur	Mauszeiger einbeziehen
+Inspiré de l'ergonomie de Screenpresso, de l'Outil Capture d'écran de Windows, de Greenshot et d'autres outils de capture. Aucune partie de leur code n'est réutilisée.	Inspiriert von der Bedienung von Screenpresso, dem Windows-Snipping-Tool, Greenshot und anderen Aufnahmewerkzeugen. Kein Teil ihres Codes wird wiederverwendet.
+Introuvable — installez FFmpeg ({0}) ou indiquez son emplacement	Nicht gefunden — installieren Sie FFmpeg ({0}) oder geben Sie den Speicherort an
+Jamais	Nie
+Journal de diagnostic	Diagnoseprotokoll
+Journal de diagnostic activé (Paramètres → Diagnostic)	Diagnoseprotokoll aktiviert (Einstellungen → Diagnose)
+La croix masque la fenêtre sans quitter	Das Schließen-Kreuz blendet das Fenster aus, ohne zu beenden
+Lancer directement dans la zone de notification	Direkt im Infobereich starten
+Langue	Sprache
+Le presse-papiers ne contient pas d'image	Die Zwischenablage enthält kein Bild
+Le texte a été copié dans le presse-papiers.	Der Text wurde in die Zwischenablage kopiert.
+Les {0} captures sélectionnées seront envoyées dans la Corbeille.	Die {0} ausgewählten Aufnahmen werden in den Papierkorb verschoben.
+Ligne (L)	Linie (L)
+Lire	Abspielen
+Loupe (M)	Lupe (M)
+Loupe de précision	Präzisionslupe
+Main levée (P)	Freihand (P)
+Maj	Umschalt
+Micro « {0} » introuvable : enregistrement sans le son	Mikrofon „{0}“ nicht gefunden: Aufnahme ohne Ton
+Microphone	Mikrofon
+Miniature	Miniatur
+Mode de suppression	Löschmodus
+Modifications enregistrées	Änderungen gespeichert
+NOUVEAU	NEU
+Nettoyer maintenant	Jetzt aufräumen
+Non disponible pour le format GIF	Für das GIF-Format nicht verfügbar
+Non enregistré (déjà utilisé par une autre application, ou syntaxe invalide)	Nicht registriert (bereits von einer anderen Anwendung verwendet oder ungültige Syntax)
+Nouvelle capture	Neue Aufnahme
+Nouvelle taille : {0} × {1} px	Neue Größe: {0} × {1} px
+Nuancier des styles	Stilpalette
+Numérotation	Nummerierung
+Numérotation (N)	Nummerierung (N)
+OCR impossible : {0}	OCR fehlgeschlagen: {0}
+OCR indisponible : {0}	OCR nicht verfügbar: {0}
+Ombre portée	Schlagschatten
+Ouvrir dans l'éditeur	Im Editor öffnen
+Ouvrir l'espace de travail	Arbeitsbereich öffnen
+Ouvrir le dossier	Ordner öffnen
+Ouvrir le dossier des captures	Aufnahmeordner öffnen
+Ouvrir une image dans l'éditeur	Bild im Editor öffnen
+PNG sans perte ou JPEG compressé	Verlustfreies PNG oder komprimiertes JPEG
+Paramètres	Einstellungen
+Parcourir	Durchsuchen
+Personnalisée	Benutzerdefiniert
+Personnalisée…	Benutzerdefiniert…
+Pipette (I)	Pipette (I)
+Pivoter à droite	Nach rechts drehen
+Pivoter à gauche	Nach links drehen
+Plein écran	Vollbild
+Plein écran multi-moniteurs, fenêtre active, dernière zone, capture différée	Vollbild über mehrere Monitore, aktives Fenster, letzter Bereich, verzögerte Aufnahme
+Plein écran\t{0}	Vollbild\t{0}
+Pointillés	Gestrichelt
+Premier plan	In den Vordergrund
+Presse-papiers indisponible	Zwischenablage nicht verfügbar
+Presse-papiers indisponible : {0}	Zwischenablage nicht verfügbar: {0}
+Prochain	Nächste
+Qualité JPEG	JPEG-Qualität
+Quitter	Beenden
+Quitter ScreenCapture	ScreenCapture beenden
+REFUSÉ	ABGELEHNT
+Raccord	Naht
+Raccourcis clavier globaux	Globale Tastenkürzel
+Raccourcis clavier globaux configurables, icône de notification	Konfigurierbare globale Tastenkürzel, Infobereichssymbol
+Rechercher…	Suchen…
+Reconnaissance du texte…	Text wird erkannt…
+Rectangle (R)	Rechteck (R)
+Redimensionner	Größe ändern
+Redimensionner l'image	Bildgröße ändern
+Remplacer Win + Maj + S	Win + Umschalt + S ersetzen
+Remplissage	Füllung
+Remplissage de l'origine	Ursprungsstelle füllen
+Renumérote les pastilles dans l'ordre de création, à partir de 1	Nummeriert die Marken in Erstellungsreihenfolge ab 1 neu
+Renuméroter dans l'ordre	Der Reihe nach neu nummerieren
+Retire une bande de l'image et recolle les deux morceaux.	Entfernt einen Streifen aus dem Bild und fügt die beiden Teile wieder zusammen.
+Retirer cette couleur	Diese Farbe entfernen
+Retour à l'espace de travail	Zurück zum Arbeitsbereich
+Rien	Nichts
+Rien à supprimer pour l'instant. Vérification au démarrage puis toutes les heures.	Derzeit nichts zu löschen. Prüfung beim Start und danach stündlich.
+Rogner	Zuschneiden
+Rogner (C)	Zuschneiden (C)
+Réinitialiser à 1	Auf 1 zurücksetzen
+Rétablir (Ctrl+Y)	Wiederholen (Strg+Y)
+Saisissez votre texte…	Text eingeben…
+Sans le son  •  M pour l'activer	Ohne Ton  •  M zum Aktivieren
+Sans le son  •  aucun micro choisi dans les Paramètres	Ohne Ton  •  kein Mikrofon in den Einstellungen gewählt
+Sans le son : aucun micro choisi dans les Paramètres (ou GIF)	Ohne Ton: kein Mikrofon in den Einstellungen gewählt (oder GIF)
+ScreenCapture — {0} pour capturer	ScreenCapture — {0} zum Aufnehmen
+Seuls les fichiers créés par ScreenCapture (Capture_…, Video_…, Collage_…) sont concernés. Les captures épinglées ({0} sur une vignette) et celle ouverte dans l'éditeur ne sont jamais supprimées. L'âge se compte depuis la création du fichier.	Nur von ScreenCapture erstellte Dateien (Capture_…, Video_…, Collage_…) sind betroffen. Angeheftete Aufnahmen ({0} auf einer Miniatur) und die im Editor geöffnete werden nie gelöscht. Das Alter zählt ab der Erstellung der Datei.
+Sombre	Dunkel
+Son activé : cliquer pour couper le micro	Ton an: klicken, um das Mikrofon stummzuschalten
+Son coupé : cliquer pour activer le micro	Ton aus: klicken, um das Mikrofon einzuschalten
+Style	Stil
+Supprimer	Löschen
+Supprimer (Suppr)	Löschen (Entf)
+Supprimer la capture ?	Aufnahme löschen?
+Supprimer les images après	Bilder löschen nach
+Supprimer les vidéos après	Videos löschen nach
+Supprimer {0} captures ?	{0} Aufnahmen löschen?
+Surligneur (H)	Textmarker (H)
+Système	System
+Sélection (V)	Auswahl (V)
+Sélectionnez la zone à enregistrer  •  Clic : fenêtre  •  Entrée : écran entier  •  Échap : annuler	Aufzunehmenden Bereich auswählen  •  Klick: Fenster  •  Eingabe: Vollbild  •  Esc: abbrechen
+Sélectionnez une zone de l'image puis faites-la glisser. L'emplacement d'origine est rempli avec la couleur de fond détectée.	Wählen Sie einen Bildbereich aus und ziehen Sie ihn. Die ursprüngliche Stelle wird mit der erkannten Hintergrundfarbe gefüllt.
+Taille du texte	Textgröße
+Taille maximale du dossier	Maximale Ordnergröße
+Tampon (S)	Stempel (S)
+Tampons	Stempel
+Texte (T)	Text (T)
+Texte extrait	Erkannter Text
+Thème	Design
+Tout	Alle
+Transparent	Transparent
+Utilisé : {0}	Belegt: {0}
+VALIDÉ	GEPRÜFT
+Valeur	Wert
+Valeurs par défaut	Standardwerte
+Version {0}  •  Rust + egui  •  Material Design 3	Version {0}  •  Rust + egui  •  Material Design 3
+Verticale	Vertikal
+Vidéo	Video
+Vidéo (démarrer / arrêter)	Video (starten / stoppen)
+Vidéo enregistrée : {0}	Video gespeichert: {0}
+Vidéos	Videos
+Win	Win
+Zigzag	Zickzack
+Zone	Bereich
+Zoom arrière	Verkleinern
+Zoom avant	Vergrößern
+aucun écran	kein Bildschirm
+conversion GIF échouée	GIF-Umwandlung fehlgeschlagen
+envoyée(s) dans la Corbeille	in den Papierkorb verschoben
+envoyées dans la Corbeille	in den Papierkorb verschoben
+erreur interne pendant la capture	interner Fehler während der Aufnahme
+format d'image inattendu	unerwartetes Bildformat
+i, ii, iii	i, ii, iii
+suppression impossible (code {0})	Löschen nicht möglich (Code {0})
+suppression impossible : {0}	Löschen nicht möglich: {0}
+supprimée(s)	gelöscht
+supprimées définitivement	endgültig gelöscht
+zone hors de l'écran	Bereich außerhalb des Bildschirms
+zone trop petite pour une vidéo	Bereich zu klein für ein Video
+zone vide	leerer Bereich
+{0}  Copier	{0}  Kopieren
+{0}  Désépingler	{0}  Lösen
+{0}  Ouvrir avec l'application par défaut	{0}  Mit Standard-App öffnen
+{0}  Supprimer	{0}  Löschen
+{0}  Supprimer les {1} captures	{0}  Die {1} Aufnahmen löschen
+{0}  Éditer	{0}  Bearbeiten
+{0}  Épingler	{0}  Anheften
+{0}  Épingler / désépingler les {1} captures	{0}  Die {1} Aufnahmen anheften / lösen
+{0} Go	{0} GB
+{0} Ko	{0} KB
+{0} Mo	{0} MB
+{0} capture ({1})	{0} Aufnahme ({1})
+{0} captures ({1})	{0} Aufnahmen ({1})
+{0} captures désépinglées	{0} Aufnahmen gelöst
+{0} captures envoyées dans la Corbeille	{0} Aufnahmen in den Papierkorb verschoben
+{0} captures épinglées	{0} Aufnahmen angeheftet
+{0} images ajoutées au dossier des captures	{0} Bilder zum Aufnahmeordner hinzugefügt
+{0} px retirés	{0} px entfernt
+{0} seraient supprimées maintenant{1}.	{0} würden jetzt gelöscht{1}.
+{0} × {1} px	{0} × {1} px
+{0} élément	{0} Element
+{0} éléments	{0} Elemente
+{0} — ScreenCapture	{0} — ScreenCapture
+« {0} » sera envoyé dans la Corbeille.	„{0}“ wird in den Papierkorb verschoben.
+À CORRIGER	ZU KORRIGIEREN
+À propos	Info
+Échap	Esc
+Échec de la capture : {0}	Aufnahme fehlgeschlagen: {0}
+Éditer	Bearbeiten
+Éditeur	Editor
+Éditeur : flèches, formes, surligneur, flou, texte, bulles, numéros, loupe, tampons, rognage, rotation	Editor: Pfeile, Formen, Textmarker, Weichzeichner, Text, Sprechblasen, Nummern, Lupe, Stempel, Zuschnitt, Drehung
+Épaisseur	Stärke
+Épingler : jamais supprimée automatiquement	Anheften: wird nie automatisch gelöscht
+•  {0} sélectionnées  •  Suppr pour les supprimer	•  {0} ausgewählt  •  Entf zum Löschen

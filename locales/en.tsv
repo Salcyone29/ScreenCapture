@@ -1,0 +1,353 @@
+# English — traductions de l'interface (français<TAB>traduction). \t = tabulation, \n = saut de ligne.
+ (dont {0} pour la taille maximale)	 (including {0} for the maximum size)
+ (taille maximale dépassée)	 (maximum size exceeded)
+1 an	1 year
+1 image ajoutée au dossier des captures	1 image added to the captures folder
+30 jours	30 days
+7 jours	7 days
+90 jours	90 days
+APPROUVÉ	APPROVED
+APRÈS	AFTER
+AVANT	BEFORE
+Accueil	Home
+Actif : {0}	Active: {0}
+Actualiser	Refresh
+Actualiser la liste	Refresh the list
+Affiche les pixels agrandis et la couleur sous le curseur pendant la sélection	Shows magnified pixels and the color under the cursor while selecting
+Afficher dans l'Explorateur	Show in Explorer
+Afficher dans le Finder	Show in Finder
+Afficher le cadre d'enregistrement	Show the recording frame
+Ajouter une couleur	Add a color
+Ajuster à la fenêtre (Ctrl+0)	Fit to window (Ctrl+0)
+Alt	Alt
+Annuler	Cancel
+Annuler (Ctrl+Z)	Undo (Ctrl+Z)
+Annuler l'enregistrement	Cancel the recording
+Apparence et démarrage	Appearance and startup
+Appliquer	Apply
+Appliquer ce style à tous	Apply this style to all
+Appliquer la conservation ?	Apply retention?
+Appliquer les raccourcis	Apply shortcuts
+Appuyez sur {0} pour capturer une zone de l'écran.	Press {0} to capture an area of the screen.
+Après la capture	After capture
+Après {0} s	After {0} s
+Arrière-plan	Send to back
+Arrêter	Stop
+Astuce : si Impr. écran ouvre l'Outil Capture de Windows, désactivez « Utiliser la touche Impr. écran pour ouvrir la capture d'écran » dans Paramètres Windows > Accessibilité > Clavier.	Tip: if Print Screen opens the Windows Snipping Tool, turn off “Use the Print screen key to open screen capture” in Windows Settings > Accessibility > Keyboard.
+Astuce : ⌘⇧3, ⌘⇧4 et ⌘⇧5 sont réservés par macOS (Réglages Système > Clavier > Raccourcis clavier > Captures d'écran).	Tip: ⌘⇧3, ⌘⇧4 and ⌘⇧5 are reserved by macOS (System Settings > Keyboard > Keyboard Shortcuts > Screenshots).
+Au-delà, les captures les plus anciennes sont supprimées	Beyond this, the oldest captures are deleted
+Aucun	None
+Aucun micro branché ou activé dans Windows • non disponible en GIF	No microphone connected or enabled in Windows • not available for GIF
+Aucun raccourci	No shortcut
+Aucun texte détecté	No text detected
+Aucune capture pour l'instant	No captures yet
+Aucune image parmi les fichiers	None of the files is an image
+Aucune suppression automatique.	No automatic deletion.
+Aucune zone précédente : sélectionnez une zone.	No previous area: select an area.
+Avec ce réglage, {0} seront {1} dès maintenant.	With this setting, {0} will be {1} right away.
+Avec le son  •  M pour couper	With sound  •  M to mute
+BROUILLON	DRAFT
+Bande à retirer	Strip to remove
+Basculer le thème	Toggle theme
+Bordure	Border
+Bulle de texte (U)	Speech bubble (U)
+CONFIDENTIEL	CONFIDENTIAL
+Capture	Capture
+Capture de zone au lieu de l'Outil Capture de Windows (utile si la touche capture du clavier envoie ce raccourci)	Area capture instead of the Windows Snipping Tool (useful if the keyboard's screenshot key sends this shortcut)
+Capture de zone avec loupe, réticule et pipette, détection automatique des fenêtres	Area capture with magnifier, crosshair and color picker, automatic window detection
+Capture différée ({0} s)	Delayed capture ({0} s)
+Capture désépinglée	Capture unpinned
+Capture enregistrée	Capture saved
+Capture enregistrée et copiée	Capture saved and copied
+Capture refusée : autorisez ScreenCapture dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, puis relancez l'application.	Capture denied: allow ScreenCapture in System Settings > Privacy & Security > Screen Recording, then restart the app.
+Capture épinglée : elle ne sera jamais supprimée automatiquement	Capture pinned: it will never be deleted automatically
+Capturer une zone	Capture an area
+Capturer une zone\t{0}	Capture an area\t{0}
+Ces images sont déjà dans le dossier des captures	These images are already in the captures folder
+Chaque capture est copiée immédiatement	Each capture is copied immediately
+Chaque capture est enregistrée dans le dossier	Each capture is saved to the folder
+Choisir	Choose
+Choix par défaut ; modifiable au moment de choisir la zone (touche M)	Default choice; can be changed when selecting the area (M key)
+Clair	Light
+Clic : modifier  •  clic droit : retirer  •  + : ajouter	Click: edit  •  right-click: remove  •  +: add
+Cliquer pour apposer le tampon	Click to place the stamp
+Cliquer pour placer le numéro suivant	Click to place the next number
+Cliquer pour prélever une couleur	Click to pick a color
+Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer	Click to select • Drag to move • Del to delete
+Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider	Click to type • Ctrl+Enter or Esc to confirm
+Cliquer pour écrire • ⌘Entrée ou Échap pour valider	Click to type • ⌘Return or Esc to confirm
+Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)	Paste the clipboard image into the captures folder (Ctrl+V)
+Conservation : rien à supprimer	Retention: nothing to delete
+Conservation : {0}	Retention: {0}
+Conservation : {0} {1}	Retention: {0} {1}
+Conservation des captures	Capture retention
+Conversion en GIF…	Converting to GIF…
+Conçu par Stéphane Salou	Designed by Stéphane Salou
+Copier	Copy
+Copier dans le presse-papiers	Copy to clipboard
+Copié dans le presse-papiers	Copied to clipboard
+Copiée dans le presse-papiers	Copied to clipboard
+Corbeille (récupérable)	Recycle Bin (recoverable)
+Couleur d'accent	Accent color
+Couleur de la bordure	Border color
+Couleur {0} copiée	Color {0} copied
+Couleur {0} sur {1}	Color {0} of {1}
+Couleurs d'origine	Original colors
+Couleurs de l'éditeur	Editor colors
+Ctrl	Ctrl
+Dernière zone	Last area
+Dernière zone\t{0}	Last area\t{0}
+Dessine le pointeur de la souris dans la capture	Draws the mouse pointer in the capture
+Diagnostic	Diagnostics
+Différée	Delayed
+Dossier des captures	Captures folder
+Droit	Straight
+Découpe	Cut
+Découper	Cut
+Découper une bande (X)	Cut out a strip (X)
+Définitive	Permanent
+Délai de la capture différée	Delayed capture delay
+Démarrer réduit	Start minimized
+Déplacer une zone	Move an area
+Déplacer une zone (D)	Move an area (D)
+Déplacer à droite	Move right
+Déplacer à gauche	Move left
+Désactivé	Off
+Désépingler	Unpin
+Effets à l'export	Export effects
+Ellipse (E)	Ellipse (E)
+En cas de blocage, relancer ScreenCapture depuis le menu Démarrer remplace l'instance bloquée ; le journal indique alors l'étape en cause. Désactiver le journal masque cette section (triple-clic sur la version, page « À propos », pour la retrouver).	If the app freezes, launching ScreenCapture again from the Start menu replaces the frozen instance; the log then shows the step at fault. Turning the log off hides this section (triple-click the version on the “About” page to bring it back).
+Enregistrement	Recording
+Enregistrement annulé	Recording cancelled
+Enregistrement impossible : {0}	Cannot save: {0}
+Enregistrement vidéo MP4 / WebM / GIF avec micro (via FFmpeg)	MP4 / WebM / GIF video recording with microphone (via FFmpeg)
+Enregistrer	Save
+Enregistrer automatiquement	Save automatically
+Enregistrer le curseur	Record the cursor
+Enregistrer le son du micro	Record microphone sound
+Enregistrer sous… (Ctrl+Maj+S)	Save as… (Ctrl+Shift+S)
+Enregistrer une vidéo\t{0}	Record a video\t{0}
+Enregistré : {0}	Saved: {0}
+Entrée	Enter
+Entrée : appliquer le rognage • Échap : annuler	Enter: apply crop • Esc: cancel
+Entrée : retirer la bande • Échap : annuler	Enter: remove the strip • Esc: cancel
+Envoyé dans la Corbeille	Moved to the Recycle Bin
+Erreur : {0}	Error: {0}
+Erreur vidéo : {0}	Video error: {0}
+Espace de travail avec historique, recherche et filtres	Workspace with history, search and filters
+Exemples : PrintScreen, ctrl+PrintScreen, ctrl+shift+KeyS, alt+F9. Laisser vide pour désactiver.	Examples: PrintScreen, ctrl+PrintScreen, ctrl+shift+KeyS, alt+F9. Leave empty to disable.
+Exemples : super+shift+Digit2 (⌘⇧2), ctrl+alt+KeyS, F13. Laisser vide pour désactiver.	Examples: super+shift+Digit2 (⌘⇧2), ctrl+alt+KeyS, F13. Leave empty to disable.
+Extraction de texte (OCR Windows)	Text extraction (Windows OCR)
+Extraire le texte (OCR Windows)	Extract text (Windows OCR)
+FFmpeg introuvable. Installez-le ({0}) ou indiquez son chemin dans les paramètres.	FFmpeg not found. Install it ({0}) or set its path in the settings.
+FFmpeg n'a produit aucun fichier (code {0})	FFmpeg produced no file (code {0})
+Fenêtre	Window
+Fenêtre active	Active window
+Fenêtre\t{0}	Window\t{0}
+Fermer	Close
+Fermer dans la zone de notification	Close to the notification area
+Finalisation de la vidéo…	Finalizing the video…
+Flouter / pixeliser (B)	Blur / pixelate (B)
+Flèche (A)	Arrow (A)
+Fonctionnalités	Features
+Format	Format
+Format d'image	Image format
+Forme sélectionnée	Selected shape
+GetDIBits a échoué	GetDIBits failed
+Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler	Drag: area  •  Click: window  •  Enter: full screen  •  C: copy color  •  Esc: cancel
+Glisser ou double-cliquer pour saisir (ex. 5, e, IV)	Drag or double-click to type (e.g. 5, e, IV)
+Glisser pour choisir la bande à retirer	Drag to choose the strip to remove
+Glisser pour définir la zone à conserver	Drag to set the area to keep
+Glisser pour sélectionner une zone, puis la faire glisser • Suppr : la remettre en place	Drag to select an area, then drag it • Del: put it back
+Glisser pour tracer • Défiler : déplacer • ⌘+défiler ou pincer : zoom	Drag to draw • Scroll: pan • ⌘+scroll or pinch: zoom
+Glisser pour tracer • Maj : angles de 45°	Drag to draw • Shift: 45° angles
+Glisser pour tracer • Maj : forme régulière	Drag to draw • Shift: regular shape
+Glisser pour tracer • Molette : défiler • Ctrl+molette : zoom	Drag to draw • Wheel: scroll • Ctrl+wheel: zoom
+Historique	History
+Horizontale	Horizontal
+I, II, III	I, II, III
+IMPORTANT	IMPORTANT
+Image BMP	BMP image
+Image JPEG	JPEG image
+Image PNG	PNG image
+Image collée : {0}	Image pasted: {0}
+Image copiée dans le presse-papiers	Image copied to clipboard
+Images	Images
+Images par seconde	Frames per second
+Impossible d'ouvrir l'image : {0}	Cannot open the image: {0}
+Impr. écran	Print Screen
+Inclure le curseur	Include the cursor
+Inspiré de l'ergonomie de Screenpresso, de l'Outil Capture d'écran de Windows, de Greenshot et d'autres outils de capture. Aucune partie de leur code n'est réutilisée.	Inspired by the ergonomics of Screenpresso, the Windows Snipping Tool, Greenshot and other capture tools. No part of their code is reused.
+Introuvable — installez FFmpeg ({0}) ou indiquez son emplacement	Not found — install FFmpeg ({0}) or set its location
+Jamais	Never
+Journal de diagnostic	Diagnostic log
+Journal de diagnostic activé (Paramètres → Diagnostic)	Diagnostic log enabled (Settings → Diagnostics)
+La croix masque la fenêtre sans quitter	The close button hides the window without quitting
+Lancer directement dans la zone de notification	Launch straight into the notification area
+Langue	Language
+Le presse-papiers ne contient pas d'image	The clipboard contains no image
+Le texte a été copié dans le presse-papiers.	The text has been copied to the clipboard.
+Les {0} captures sélectionnées seront envoyées dans la Corbeille.	The {0} selected captures will be moved to the Recycle Bin.
+Ligne (L)	Line (L)
+Lire	Play
+Loupe (M)	Magnifier (M)
+Loupe de précision	Precision magnifier
+Main levée (P)	Freehand (P)
+Maj	Shift
+Micro « {0} » introuvable : enregistrement sans le son	Microphone “{0}” not found: recording without sound
+Microphone	Microphone
+Miniature	Thumbnail
+Mode de suppression	Deletion mode
+Modifications enregistrées	Changes saved
+NOUVEAU	NEW
+Nettoyer maintenant	Clean up now
+Non disponible pour le format GIF	Not available for the GIF format
+Non enregistré (déjà utilisé par une autre application, ou syntaxe invalide)	Not registered (already used by another application, or invalid syntax)
+Nouvelle capture	New capture
+Nouvelle taille : {0} × {1} px	New size: {0} × {1} px
+Nuancier des styles	Style palette
+Numérotation	Numbering
+Numérotation (N)	Numbering (N)
+OCR impossible : {0}	OCR failed: {0}
+OCR indisponible : {0}	OCR unavailable: {0}
+Ombre portée	Drop shadow
+Ouvrir dans l'éditeur	Open in the editor
+Ouvrir l'espace de travail	Open the workspace
+Ouvrir le dossier	Open the folder
+Ouvrir le dossier des captures	Open the captures folder
+Ouvrir une image dans l'éditeur	Open an image in the editor
+PNG sans perte ou JPEG compressé	Lossless PNG or compressed JPEG
+Paramètres	Settings
+Parcourir	Browse
+Personnalisée	Custom
+Personnalisée…	Custom…
+Pipette (I)	Color picker (I)
+Pivoter à droite	Rotate right
+Pivoter à gauche	Rotate left
+Plein écran	Full screen
+Plein écran multi-moniteurs, fenêtre active, dernière zone, capture différée	Multi-monitor full screen, active window, last area, delayed capture
+Plein écran\t{0}	Full screen\t{0}
+Pointillés	Dashed
+Premier plan	Bring to front
+Presse-papiers indisponible	Clipboard unavailable
+Presse-papiers indisponible : {0}	Clipboard unavailable: {0}
+Prochain	Next
+Qualité JPEG	JPEG quality
+Quitter	Quit
+Quitter ScreenCapture	Quit ScreenCapture
+REFUSÉ	REJECTED
+Raccord	Seam
+Raccourcis clavier globaux	Global keyboard shortcuts
+Raccourcis clavier globaux configurables, icône de notification	Configurable global keyboard shortcuts, notification icon
+Rechercher…	Search…
+Reconnaissance du texte…	Recognizing text…
+Rectangle (R)	Rectangle (R)
+Redimensionner	Resize
+Redimensionner l'image	Resize the image
+Remplacer Win + Maj + S	Replace Win + Shift + S
+Remplissage	Fill
+Remplissage de l'origine	Fill the original spot
+Renumérote les pastilles dans l'ordre de création, à partir de 1	Renumbers the badges in creation order, starting from 1
+Renuméroter dans l'ordre	Renumber in order
+Retire une bande de l'image et recolle les deux morceaux.	Removes a strip from the image and joins the two pieces back together.
+Retirer cette couleur	Remove this color
+Retour à l'espace de travail	Back to the workspace
+Rien	Nothing
+Rien à supprimer pour l'instant. Vérification au démarrage puis toutes les heures.	Nothing to delete for now. Checked at startup and then every hour.
+Rogner	Crop
+Rogner (C)	Crop (C)
+Réinitialiser à 1	Reset to 1
+Rétablir (Ctrl+Y)	Redo (Ctrl+Y)
+Saisissez votre texte…	Type your text…
+Sans le son  •  M pour l'activer	No sound  •  M to turn it on
+Sans le son  •  aucun micro choisi dans les Paramètres	No sound  •  no microphone chosen in Settings
+Sans le son : aucun micro choisi dans les Paramètres (ou GIF)	No sound: no microphone chosen in Settings (or GIF)
+ScreenCapture — {0} pour capturer	ScreenCapture — {0} to capture
+Seuls les fichiers créés par ScreenCapture (Capture_…, Video_…, Collage_…) sont concernés. Les captures épinglées ({0} sur une vignette) et celle ouverte dans l'éditeur ne sont jamais supprimées. L'âge se compte depuis la création du fichier.	Only files created by ScreenCapture (Capture_…, Video_…, Collage_…) are affected. Pinned captures ({0} on a thumbnail) and the one open in the editor are never deleted. Age is counted from the file's creation.
+Sombre	Dark
+Son activé : cliquer pour couper le micro	Sound on: click to mute the microphone
+Son coupé : cliquer pour activer le micro	Sound off: click to turn on the microphone
+Style	Style
+Supprimer	Delete
+Supprimer (Suppr)	Delete (Del)
+Supprimer la capture ?	Delete the capture?
+Supprimer les images après	Delete images after
+Supprimer les vidéos après	Delete videos after
+Supprimer {0} captures ?	Delete {0} captures?
+Surligneur (H)	Highlighter (H)
+Système	System
+Sélection (V)	Select (V)
+Sélectionnez la zone à enregistrer  •  Clic : fenêtre  •  Entrée : écran entier  •  Échap : annuler	Select the area to record  •  Click: window  •  Enter: full screen  •  Esc: cancel
+Sélectionnez une zone de l'image puis faites-la glisser. L'emplacement d'origine est rempli avec la couleur de fond détectée.	Select an area of the image, then drag it. The original spot is filled with the detected background color.
+Taille du texte	Text size
+Taille maximale du dossier	Maximum folder size
+Tampon (S)	Stamp (S)
+Tampons	Stamps
+Texte (T)	Text (T)
+Texte extrait	Extracted text
+Thème	Theme
+Tout	All
+Transparent	Transparent
+Utilisé : {0}	Used: {0}
+VALIDÉ	VALIDATED
+Valeur	Value
+Valeurs par défaut	Defaults
+Version {0}  •  Rust + egui  •  Material Design 3	Version {0}  •  Rust + egui  •  Material Design 3
+Verticale	Vertical
+Vidéo	Video
+Vidéo (démarrer / arrêter)	Video (start / stop)
+Vidéo enregistrée : {0}	Video saved: {0}
+Vidéos	Videos
+Win	Win
+Zigzag	Zigzag
+Zone	Area
+Zoom arrière	Zoom out
+Zoom avant	Zoom in
+aucun écran	no screen
+conversion GIF échouée	GIF conversion failed
+envoyée(s) dans la Corbeille	moved to the Recycle Bin
+envoyées dans la Corbeille	moved to the Recycle Bin
+erreur interne pendant la capture	internal error during capture
+format d'image inattendu	unexpected image format
+i, ii, iii	i, ii, iii
+suppression impossible (code {0})	cannot delete (code {0})
+suppression impossible : {0}	cannot delete: {0}
+supprimée(s)	deleted
+supprimées définitivement	permanently deleted
+zone hors de l'écran	area off screen
+zone trop petite pour une vidéo	area too small for a video
+zone vide	empty area
+{0}  Copier	{0}  Copy
+{0}  Désépingler	{0}  Unpin
+{0}  Ouvrir avec l'application par défaut	{0}  Open with the default app
+{0}  Supprimer	{0}  Delete
+{0}  Supprimer les {1} captures	{0}  Delete the {1} captures
+{0}  Éditer	{0}  Edit
+{0}  Épingler	{0}  Pin
+{0}  Épingler / désépingler les {1} captures	{0}  Pin / unpin the {1} captures
+{0} Go	{0} GB
+{0} Ko	{0} KB
+{0} Mo	{0} MB
+{0} capture ({1})	{0} capture ({1})
+{0} captures ({1})	{0} captures ({1})
+{0} captures désépinglées	{0} captures unpinned
+{0} captures envoyées dans la Corbeille	{0} captures moved to the Recycle Bin
+{0} captures épinglées	{0} captures pinned
+{0} images ajoutées au dossier des captures	{0} images added to the captures folder
+{0} px retirés	{0} px removed
+{0} seraient supprimées maintenant{1}.	{0} would be deleted now{1}.
+{0} × {1} px	{0} × {1} px
+{0} élément	{0} item
+{0} éléments	{0} items
+{0} — ScreenCapture	{0} — ScreenCapture
+« {0} » sera envoyé dans la Corbeille.	“{0}” will be moved to the Recycle Bin.
+À CORRIGER	TO FIX
+À propos	About
+Échap	Esc
+Échec de la capture : {0}	Capture failed: {0}
+Éditer	Edit
+Éditeur	Editor
+Éditeur : flèches, formes, surligneur, flou, texte, bulles, numéros, loupe, tampons, rognage, rotation	Editor: arrows, shapes, highlighter, blur, text, bubbles, numbers, magnifier, stamps, crop, rotation
+Épaisseur	Thickness
+Épingler : jamais supprimée automatiquement	Pin: never deleted automatically
+•  {0} sélectionnées  •  Suppr pour les supprimer	•  {0} selected  •  Del to delete them
