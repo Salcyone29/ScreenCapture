@@ -116,3 +116,9 @@ Une instance déjà lancée se pilote avec `ScreenCapture.exe --cmd` suivi de : 
 - Si l'application ne répond plus, la relancer depuis le menu Démarrer remplace l'instance bloquée.
 - Un journal de diagnostic peut être activé par un triple-clic sur la version, dans « À propos ».
 - ScreenCapture est un logiciel libre (licence GPL-3.0) : le code source et les versions sont sur GitHub.
+## Sur Mac : autorisation d'enregistrer l'écran
+ScreenCapture a besoin de l'autorisation **Enregistrement de l'écran** pour les captures et les vidéos (FFmpeg, lancé par l'application, en dépend aussi). Sans elle, les captures sont **noires** ou ne montrent que le fond d'écran.
+- Quand l'autorisation manque, un bandeau rouge s'affiche en haut de la fenêtre avec **Ouvrir les Réglages** et **Relancer**.
+- Dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, si ScreenCapture est déjà dans la liste mais que les captures restent noires, supprimer l'entrée avec le bouton `−`, l'ajouter de nouveau avec `+` (ou l'activer), puis relancer l'application.
+- Le son du système demande en plus l'autorisation **Enregistrement audio du système uniquement**, dans la même page.
+> Depuis macOS Sequoia, le système redemande environ une fois par mois l'autorisation à chaque application qui enregistre l'écran. C'est normal : il suffit d'accepter.

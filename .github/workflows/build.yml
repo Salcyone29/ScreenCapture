@@ -16,6 +16,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: Swatinem/rust-cache@v2
+      # Certificat de signature (secrets MACOS_CERT_P12 en base64 et MACOS_CERT_PASSWORD) : une
+      # signature stable garde l'autorisation d'enregistrer l'écran d'une version à l'autre.
+      # Sans ces secrets, la signature est ad hoc.
+      - name: Importer le certificat de signature
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then echo "Pas de certificat : signature ad hoc."; exit 0; fi
+          KC="$RUNNER_TEMP/signature.keychain-db"
+          KCPASS=$(uuidgen)
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KCPASS" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$KCPASS" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPASS" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          IDENTITY=$(security find-identity -p codesigning "$KC" | awk -F'"' '/"/ {print $2; exit}')
+          echo "Identité : $IDENTITY"
+          echo "MACOS_SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
       - name: Compiler l'application et le .dmg
         run: ./build-macos.sh
       - uses: actions/upload-artifact@v5

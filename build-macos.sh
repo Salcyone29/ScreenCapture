@@ -4,7 +4,8 @@
 #   ./build-macos.sh              binaire universel (Apple Silicon + Intel)
 #   ./build-macos.sh --native     uniquement l'architecture de ce Mac (plus rapide)
 #
-# Signature : ad hoc par défaut ; définir MACOS_SIGN_IDENTITY="Developer ID Application: …" pour signer.
+# Signature : ad hoc par défaut ; définir MACOS_SIGN_IDENTITY (nom du certificat dans le trousseau) pour
+# une signature stable, indispensable pour garder l'autorisation d'enregistrer l'écran entre deux versions.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -36,7 +37,15 @@ cp assets/ScreenCapture.icns "$APP/Contents/Resources/"
 cp LICENSE THIRD-PARTY-LICENSES.txt "$APP/Contents/Resources/"
 sed "s/@VERSION@/$VERSION/g" installer/macos/Info.plist > "$APP/Contents/Info.plist"
 
-codesign --force --deep --sign "${MACOS_SIGN_IDENTITY:--}" "$APP"
+# Signature : son identité doit rester la même d'une version à l'autre, sinon macOS ne reconnaît
+# plus l'autorisation « Enregistrement de l'écran » après une mise à jour (captures noires).
+# Avec MACOS_SIGN_IDENTITY (certificat auto-signé ou Developer ID), elle est stable ; la signature
+# ad hoc (« - ») change à chaque compilation.
+IDENTITY="${MACOS_SIGN_IDENTITY:--}"
+[[ "$IDENTITY" == "-" ]] && echo "Attention : signature ad hoc, l'autorisation d'enregistrer l'écran sera à redonner après chaque mise à jour."
+codesign --force --timestamp=none --identifier io.github.salcyone29.screencapture --sign "$IDENTITY" "$APP"
+codesign --verify --strict --verbose=2 "$APP"
+codesign --display --requirements - "$APP" || true
 
 STAGE=$(mktemp -d)
 cp -R "$APP" "$STAGE/"

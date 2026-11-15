@@ -26,6 +26,21 @@ use super::{Rect, WindowInfo};
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
     fn CGRectMakeWithDictionaryRepresentation(dict: CFDictionaryRef, rect: *mut CGRect) -> bool;
+    fn CGPreflightScreenCaptureAccess() -> bool;
+    fn CGRequestScreenCaptureAccess() -> bool;
+}
+
+/// macOS autorise cette version de l'application à enregistrer l'écran. Faux aussi quand une
+/// entrée existe dans Réglages Système mais pour une ancienne signature (après une mise à jour) :
+/// les captures seraient alors noires ou ne montreraient que le fond d'écran.
+pub fn screen_capture_allowed() -> bool {
+    unsafe { CGPreflightScreenCaptureAccess() }
+}
+
+/// Demande l'autorisation : fenêtre système (la première fois) et ajout de l'application à la
+/// liste « Enregistrement de l'écran ».
+pub fn request_screen_capture() {
+    unsafe { CGRequestScreenCaptureAccess() };
 }
 
 /// Pixels par point macOS : la plus grande échelle Retina des écrans branchés. Mise en cache
@@ -145,6 +160,13 @@ pub fn work_area_at(x: i32, y: i32) -> Rect {
 /// Capture une zone (unités de l'application) ; l'image fait `r.w × r.h` pixels.
 pub fn capture_rect(r: Rect, _with_cursor: bool) -> anyhow::Result<RgbaImage> {
     anyhow::ensure!(r.w > 0 && r.h > 0, crate::i18n::tr("zone vide"));
+    if !screen_capture_allowed() {
+        crate::diag::log("capture : autorisation d'enregistrement de l'écran absente");
+        request_screen_capture();
+        anyhow::bail!(crate::i18n::tr(
+            "Autorisation d'enregistrement de l'écran manquante : dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec −, ajoutez-la de nouveau, puis relancez l'application."
+        ));
+    }
     let s = scale();
     let cg = CGDisplay::screenshot(
         rect_to_cg(r, s),
@@ -167,6 +189,9 @@ pub fn capture_rect(r: Rect, _with_cursor: bool) -> anyhow::Result<RgbaImage> {
             // BGRA (alpha prémultiplié, toujours opaque pour l'écran).
             buf.extend_from_slice(&[px[2], px[1], px[0], 255]);
         }
+    }
+    if buf.chunks_exact(4).all(|p| p[0] == 0 && p[1] == 0 && p[2] == 0) {
+        crate::diag::log(&format!("capture : image entièrement noire ({w}×{h}), autorisation = {}", screen_capture_allowed()));
     }
     let img = RgbaImage::from_raw(w as u32, h as u32, buf).expect("taille du tampon");
     // Écran moins dense que l'échelle commune : agrandir pour rester en unités de l'application.

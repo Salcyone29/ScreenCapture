@@ -316,6 +316,9 @@ pub struct App {
     update_busy: bool,
     update_checking: bool,
     next_update_check: Instant,
+    /// macOS n'autorise pas (ou plus) l'enregistrement de l'écran : bandeau d'explication.
+    screen_access_missing: bool,
+    next_access_check: Instant,
     busy: bool,
     /// Début de la capture en cours, pour ne jamais rester bloqué en « occupé ».
     busy_since: Instant,
@@ -510,6 +513,8 @@ impl App {
             update_checking: false,
             // Première recherche peu après le démarrage.
             next_update_check: Instant::now() + Duration::from_secs(8),
+            screen_access_missing: !platform::screen_capture_allowed(),
+            next_access_check: Instant::now() + Duration::from_secs(5),
             busy: false,
             busy_since: Instant::now(),
             capture_cancelled: false,
@@ -1317,6 +1322,55 @@ impl App {
             });
         if update {
             self.start_update(ctx);
+        }
+    }
+
+    /// macOS : bandeau quand l'autorisation d'enregistrer l'écran manque (captures noires sinon).
+    /// Revérifiée toutes les 5 secondes.
+    fn screen_access_banner(&mut self, ctx: &egui::Context) {
+        if !cfg!(target_os = "macos") {
+            return;
+        }
+        if Instant::now() >= self.next_access_check {
+            self.screen_access_missing = !platform::screen_capture_allowed();
+            self.next_access_check = Instant::now() + Duration::from_secs(5);
+        }
+        ctx.request_repaint_after(self.next_access_check.saturating_duration_since(Instant::now()));
+        if !self.screen_access_missing {
+            return;
+        }
+        let p = palette(ctx);
+        let mut relaunch = false;
+        egui::TopBottomPanel::top("screen_access_banner")
+            .frame(egui::Frame::new().fill(p.error).inner_margin(Margin::symmetric(16, 8)))
+            .show(ctx, |ui| {
+                let fg = Color32::WHITE;
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(ICON_WARNING).size(20.0).color(fg));
+                    ui.label(egui::RichText::new(crate::i18n::tr("Autorisation d'enregistrement de l'écran manquante")).font(theme::medium(14.0)).color(fg));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        relaunch = theme::button(ui, ButtonKind::Tonal, Some(ICON_RESTART_ALT), crate::i18n::tr("Relancer")).clicked();
+                        if theme::button(ui, ButtonKind::Tonal, Some(ICON_SETTINGS), crate::i18n::tr("Ouvrir les Réglages")).clicked() {
+                            platform::request_screen_capture();
+                            platform::open_screen_capture_settings();
+                        }
+                    });
+                });
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(crate::i18n::tr(
+                            "Sans elle, les captures et les vidéos sont noires. Dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec le bouton −, ajoutez-la de nouveau avec + (ou activez-la), puis relancez l'application.",
+                        ))
+                        .color(fg),
+                    )
+                    .wrap(),
+                );
+            });
+        if relaunch {
+            match platform::relaunch() {
+                Ok(()) => self.request_quit(ctx),
+                Err(e) => crate::diag::log(&format!("relance impossible : {e}")),
+            }
         }
     }
 
@@ -2419,6 +2473,7 @@ impl eframe::App for App {
             ctx.request_repaint_after(self.next_update_check.saturating_duration_since(Instant::now()));
         }
         self.update_banner(ctx);
+        self.screen_access_banner(ctx);
 
         crate::diag::step(match self.mode {
             Mode::Editor => "interface : éditeur",

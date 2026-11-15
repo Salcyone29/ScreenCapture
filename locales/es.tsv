@@ -396,3 +396,8 @@ zone vide	zona vacía
 Épaisseur	Grosor
 Épingler	Anclar
 Épingler : jamais supprimée automatiquement	Anclar: nunca se elimina automáticamente
+Autorisation d'enregistrement de l'écran manquante : dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec −, ajoutez-la de nouveau, puis relancez l'application.	Falta el permiso de grabación de pantalla: en Ajustes del Sistema > Privacidad y seguridad > Grabación de pantalla, elimine la entrada antigua de ScreenCapture con −, vuelva a añadirla y reinicie la aplicación.
+Autorisation d'enregistrement de l'écran manquante	Falta el permiso de grabación de pantalla
+Relancer	Reiniciar
+Ouvrir les Réglages	Abrir Ajustes
+Sans elle, les captures et les vidéos sont noires. Dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec le bouton −, ajoutez-la de nouveau avec + (ou activez-la), puis relancez l'application.	Sin él, las capturas y los vídeos salen negros. En Ajustes del Sistema > Privacidad y seguridad > Grabación de pantalla, elimine la entrada antigua de ScreenCapture con el botón −, vuelva a añadirla con + (o actívela) y reinicie la aplicación.

@@ -50,6 +50,12 @@ fn main() -> eframe::Result<()> {
     diag::set_enabled(settings.diagnostic);
     i18n::set_language(settings.language);
     diag::log(&format!("langue : {:?} ({:?} dans les paramètres)", i18n::current(), settings.language));
+    // macOS : autorisation d'enregistrer l'écran. Absente (ou liée à une ancienne signature), la
+    // demander : fenêtre système et ajout de l'application à la liste des Réglages.
+    if !platform::screen_capture_allowed() {
+        diag::log("autorisation d'enregistrement de l'écran : absente, demandée");
+        platform::request_screen_capture();
+    }
     let start_hidden = settings.start_in_tray || from_startup;
     let icon = egui::IconData { rgba: icon::app_icon(64), width: 64, height: 64 };
     let options = eframe::NativeOptions {

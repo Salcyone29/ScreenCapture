@@ -116,3 +116,9 @@ A running instance can be controlled with `ScreenCapture.exe --cmd` followed by:
 - If the application stops responding, launching it again from the Start menu replaces the frozen instance.
 - A diagnostic log can be turned on by triple-clicking the version on the "About" page.
 - ScreenCapture is free software (GPL-3.0 license): the source code and releases are on GitHub.
+## On Mac: screen recording permission
+ScreenCapture needs the **Screen Recording** permission for screenshots and videos (FFmpeg, started by the application, depends on it too). Without it, screenshots are **black** or show only the wallpaper.
+- When the permission is missing, a red banner appears at the top of the window with **Open Settings** and **Restart**.
+- In System Settings > Privacy & Security > Screen Recording, if ScreenCapture is already listed but screenshots stay black, remove the entry with the `−` button, add it again with `+` (or turn it on), then restart the application.
+- System sound also needs the **System Audio Recording Only** permission, on the same page.
+> Since macOS Sequoia, the system asks again about once a month for every application that records the screen. This is normal: just accept.

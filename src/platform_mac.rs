@@ -288,3 +288,29 @@ pub fn is_v_key_down() -> bool {
     // kCGEventSourceStateCombinedSessionState = 0, kVK_ANSI_V = 9.
     unsafe { CGEventSourceKeyState(0, 9) }
 }
+
+pub use crate::capture::imp::{request_screen_capture, screen_capture_allowed};
+
+/// Ouvre Réglages Système à la page Confidentialité et sécurité > Enregistrement de l'écran.
+pub fn open_screen_capture_settings() {
+    let _ = std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        .spawn();
+}
+
+/// Relance l'application (paquet .app) deux secondes après sa fermeture : macOS ne prend en compte
+/// une nouvelle autorisation d'enregistrement de l'écran qu'au lancement suivant.
+pub fn relaunch() -> anyhow::Result<()> {
+    let exe = std::env::current_exe()?;
+    let target = exe
+        .ancestors()
+        .find(|p| p.extension().is_some_and(|e| e == "app"))
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| exe.clone());
+    std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg("sleep 2; open -n \"$0\"")
+        .arg(&target)
+        .spawn()?;
+    Ok(())
+}

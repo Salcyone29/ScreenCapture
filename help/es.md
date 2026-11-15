@@ -116,3 +116,9 @@ Una instancia ya abierta se controla con `ScreenCapture.exe --cmd` seguido de: `
 - Si la aplicación deja de responder, volver a abrirla desde el menú Inicio sustituye la instancia bloqueada.
 - Se puede activar un registro de diagnóstico con un triple clic en la versión, en «Acerca de».
 - ScreenCapture es software libre (licencia GPL-3.0): el código fuente y las versiones están en GitHub.
+## En Mac: permiso de grabación de pantalla
+ScreenCapture necesita el permiso **Grabación de pantalla** para las capturas y los vídeos (FFmpeg, iniciado por la aplicación, también depende de él). Sin él, las capturas salen **negras** o solo muestran el fondo de pantalla.
+- Cuando falta el permiso, aparece una franja roja en la parte superior de la ventana con **Abrir Ajustes** y **Reiniciar**.
+- En Ajustes del Sistema > Privacidad y seguridad > Grabación de pantalla, si ScreenCapture ya está en la lista pero las capturas siguen negras, eliminar la entrada con el botón `−`, volver a añadirla con `+` (o activarla) y reiniciar la aplicación.
+- El sonido del sistema necesita además el permiso **Solo grabación de audio del sistema**, en la misma página.
+> Desde macOS Sequoia, el sistema vuelve a pedir el permiso aproximadamente una vez al mes a cada aplicación que graba la pantalla. Es normal: basta con aceptar.

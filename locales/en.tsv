@@ -396,3 +396,8 @@ zone vide	empty area
 Épaisseur	Thickness
 Épingler	Pin
 Épingler : jamais supprimée automatiquement	Pin: never deleted automatically
+Autorisation d'enregistrement de l'écran manquante : dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec −, ajoutez-la de nouveau, puis relancez l'application.	Screen recording permission missing: in System Settings > Privacy & Security > Screen Recording, remove the old ScreenCapture entry with −, add it again, then restart the application.
+Autorisation d'enregistrement de l'écran manquante	Screen recording permission missing
+Relancer	Restart
+Ouvrir les Réglages	Open Settings
+Sans elle, les captures et les vidéos sont noires. Dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec le bouton −, ajoutez-la de nouveau avec + (ou activez-la), puis relancez l'application.	Without it, screenshots and videos are black. In System Settings > Privacy & Security > Screen Recording, remove the old ScreenCapture entry with the − button, add it again with + (or turn it on), then restart the application.

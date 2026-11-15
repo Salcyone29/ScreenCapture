@@ -116,3 +116,9 @@ Eine laufende Instanz lässt sich mit `ScreenCapture.exe --cmd` steuern, gefolgt
 - Reagiert die Anwendung nicht mehr, ersetzt ein erneuter Start über das Startmenü die blockierte Instanz.
 - Ein Diagnoseprotokoll lässt sich per Dreifachklick auf die Version auf der Seite „Info“ aktivieren.
 - ScreenCapture ist freie Software (Lizenz GPL-3.0): Quellcode und Versionen liegen auf GitHub.
+## Auf dem Mac: Berechtigung zur Bildschirmaufnahme
+ScreenCapture benötigt die Berechtigung **Bildschirmaufnahme** für Screenshots und Videos (auch das von der Anwendung gestartete FFmpeg hängt davon ab). Ohne sie sind Screenshots **schwarz** oder zeigen nur den Hintergrund.
+- Fehlt die Berechtigung, erscheint oben im Fenster ein rotes Band mit **Einstellungen öffnen** und **Neu starten**.
+- Ist ScreenCapture unter Systemeinstellungen > Datenschutz & Sicherheit > Bildschirmaufnahme bereits aufgeführt, die Screenshots bleiben aber schwarz: den Eintrag mit `−` entfernen, mit `+` erneut hinzufügen (oder aktivieren) und die Anwendung neu starten.
+- Der Systemton braucht zusätzlich die Berechtigung **Nur Systemaudioaufnahme** auf derselben Seite.
+> Seit macOS Sequoia fragt das System etwa einmal im Monat erneut bei jeder Anwendung nach, die den Bildschirm aufnimmt. Das ist normal: einfach zustimmen.

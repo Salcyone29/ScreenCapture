@@ -9,6 +9,20 @@ mod imp;
 
 pub use imp::*;
 
+/// Autorisation d'enregistrer l'écran : toujours accordée sous Windows.
+#[cfg(windows)]
+pub fn screen_capture_allowed() -> bool {
+    true
+}
+#[cfg(windows)]
+pub fn request_screen_capture() {}
+#[cfg(windows)]
+pub fn open_screen_capture_settings() {}
+#[cfg(windows)]
+pub fn relaunch() -> anyhow::Result<()> {
+    Ok(())
+}
+
 /// Modificateurs pour les raccourcis Impr. écran (masque).
 pub const MOD_CTRL: u8 = 1;
 pub const MOD_SHIFT: u8 = 2;
