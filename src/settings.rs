@@ -164,7 +164,7 @@ impl Default for Settings {
             save_dir,
             image_format: ImageFormat::Png,
             jpeg_quality: 90,
-            after_capture: AfterCapture::OpenEditor,
+            after_capture: AfterCapture::ShowWorkspace,
             copy_to_clipboard: true,
             auto_save: true,
             capture_cursor: false,
@@ -182,7 +182,7 @@ impl Default for Settings {
             video_show_region: true,
             video_cursor: true,
             audio_device: None,
-            record_audio: true,
+            record_audio: false,
             retention_images_days: 0,
             retention_videos_days: 0,
             retention_max_mb: 0,
@@ -228,5 +228,36 @@ impl Settings {
         if let Ok(json) = serde_json::to_string_pretty(self) {
             let _ = std::fs::write(path, json);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Nouvelle installation : miniature après la capture, micro coupé, langue du système.
+    #[test]
+    fn valeurs_par_defaut() {
+        let s = Settings::default();
+        assert_eq!(s.after_capture, AfterCapture::ShowWorkspace);
+        assert!(!s.record_audio);
+        assert_eq!(s.language, crate::i18n::Language::System);
+    }
+
+    /// Mise à jour : les réglages déjà enregistrés sont conservés tels quels ; seuls les réglages
+    /// absents du fichier (ajoutés par une version plus récente) prennent la valeur par défaut.
+    #[test]
+    fn reglages_existants_conserves() {
+        let json = r#"{"after_capture":"OpenEditor","record_audio":true,"language":"Fr","delay_seconds":7}"#;
+        let s: Settings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.after_capture, AfterCapture::OpenEditor);
+        assert!(s.record_audio);
+        assert_eq!(s.language, crate::i18n::Language::Fr);
+        assert_eq!(s.delay_seconds, 7);
+        assert!(s.check_updates, "réglage absent : valeur par défaut");
+        // Enregistré puis relu : inchangé.
+        let again: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+        assert_eq!(again.after_capture, AfterCapture::OpenEditor);
+        assert!(again.record_audio);
     }
 }

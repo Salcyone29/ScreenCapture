@@ -1823,7 +1823,7 @@ impl App {
                 .sense(egui::Sense::click())
                 .selectable(false),
         );
-        ui.label(egui::RichText::new(crate::i18n::tr("Conçu par Stéphane Salou")).color(p.on_surface_variant));
+        ui.label(egui::RichText::new(crate::i18n::tr("Conçu par Stéphane Salou avec l'aide de Claude Code")).color(p.on_surface_variant));
         if version.triple_clicked() && !self.settings.diagnostic {
             self.settings.diagnostic = true;
             self.settings.save();

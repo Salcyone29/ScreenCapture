@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 /// Langue choisie dans les Paramètres.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
-    /// Langue de Windows / macOS (français si elle n'est pas disponible).
+    /// Langue de Windows / macOS (anglais si elle n'est pas traduite).
     #[default]
     System,
     Fr,
@@ -80,7 +80,9 @@ pub fn system_language() -> Language {
         Some("en") => Language::En,
         Some("es") => Language::Es,
         Some("de") => Language::De,
-        _ => Language::Fr,
+        Some("fr") => Language::Fr,
+        // Langue non traduite : anglais.
+        _ => Language::En,
     }
 }
 
