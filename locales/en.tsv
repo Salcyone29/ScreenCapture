@@ -2,6 +2,7 @@
  (dont {0} pour la taille maximale)	 (including {0} for the maximum size)
  (taille maximale dépassée)	 (maximum size exceeded)
 1 an	1 year
+1 capture sélectionnée	1 capture selected
 1 image ajoutée au dossier des captures	1 image added to the captures folder
 30 jours	30 days
 7 jours	7 days
@@ -17,7 +18,9 @@ Affiche les pixels agrandis et la couleur sous le curseur pendant la sélection	
 Afficher dans l'Explorateur	Show in Explorer
 Afficher dans le Finder	Show in Finder
 Afficher le cadre d'enregistrement	Show the recording frame
+Aide	Help
 Ajouter une couleur	Add a color
+Ajouter à la sélection	Add to selection
 Ajuster à la fenêtre (Ctrl+0)	Fit to window (Ctrl+0)
 Alt	Alt
 Annuler	Cancel
@@ -35,6 +38,7 @@ Arrière-plan	Send to back
 Arrêter	Stop
 Astuce : si Impr. écran ouvre l'Outil Capture de Windows, désactivez « Utiliser la touche Impr. écran pour ouvrir la capture d'écran » dans Paramètres Windows > Accessibilité > Clavier.	Tip: if Print Screen opens the Windows Snipping Tool, turn off “Use the Print screen key to open screen capture” in Windows Settings > Accessibility > Keyboard.
 Astuce : ⌘⇧3, ⌘⇧4 et ⌘⇧5 sont réservés par macOS (Réglages Système > Clavier > Raccourcis clavier > Captures d'écran).	Tip: ⌘⇧3, ⌘⇧4 and ⌘⇧5 are reserved by macOS (System Settings > Keyboard > Keyboard Shortcuts > Screenshots).
+Au démarrage puis une fois par jour, sur la page des versions GitHub de ScreenCapture	At startup and then once a day, on ScreenCapture's GitHub releases page
 Au-delà, les captures les plus anciennes sont supprimées	Beyond this, the oldest captures are deleted
 Aucun	None
 Aucun micro branché ou activé dans Windows • non disponible en GIF	No microphone connected or enabled in Windows • not available for GIF
@@ -70,12 +74,14 @@ Choisir	Choose
 Choix par défaut ; modifiable au moment de choisir la zone (touche M)	Default choice; can be changed when selecting the area (M key)
 Clair	Light
 Clic : modifier  •  clic droit : retirer  •  + : ajouter	Click: edit  •  right-click: remove  •  +: add
+Cliquer dans le champ pour utiliser ce tampon ; double-cliquer sur un tampon posé pour modifier son texte.	Click in the field to use this stamp; double-click a placed stamp to edit its text.
 Cliquer pour apposer le tampon	Click to place the stamp
 Cliquer pour placer le numéro suivant	Click to place the next number
 Cliquer pour prélever une couleur	Click to pick a color
 Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer	Click to select • Drag to move • Del to delete
 Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider	Click to type • Ctrl+Enter or Esc to confirm
 Cliquer pour écrire • ⌘Entrée ou Échap pour valider	Click to type • ⌘Return or Esc to confirm
+Cliquer sur la case ronde d'une vignette pour sélectionner plusieurs captures.	Click the round box on a thumbnail to select several captures.
 Code source	Source code
 Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)	Paste the clipboard image into the captures folder (Ctrl+V)
 Composants tiers	Third-party components
@@ -104,6 +110,7 @@ Diagnostic	Diagnostics
 Différée	Delayed
 Dossier des captures	Captures folder
 Droit	Straight
+Dupliquer (Ctrl+D)	Duplicate (Ctrl+D)
 Découpe	Cut
 Découper	Cut
 Découper une bande (X)	Cut out a strip (X)
@@ -115,6 +122,7 @@ Déplacer une zone (D)	Move an area (D)
 Déplacer à droite	Move right
 Déplacer à gauche	Move left
 Désactivé	Off
+Désélectionner (Échap)	Clear selection (Esc)
 Désépingler	Unpin
 Effets à l'export	Export effects
 Ellipse (E)	Ellipse (E)
@@ -156,6 +164,7 @@ Format	Format
 Format d'image	Image format
 Forme sélectionnée	Selected shape
 GetDIBits a échoué	GetDIBits failed
+GitHub limite les recherches pour le moment, réessayez plus tard	GitHub is limiting checks for now, try again later
 Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler	Drag: area  •  Click: window  •  Enter: full screen  •  C: copy color  •  Esc: cancel
 Glisser ou double-cliquer pour saisir (ex. 5, e, IV)	Drag or double-click to type (e.g. 5, e, IV)
 Glisser pour choisir la bande à retirer	Drag to choose the strip to remove
@@ -174,6 +183,7 @@ Image JPEG	JPEG image
 Image PNG	PNG image
 Image collée : {0}	Image pasted: {0}
 Image copiée dans le presse-papiers	Image copied to clipboard
+Image disque ouverte : glissez ScreenCapture dans Applications.	Disk image opened: drag ScreenCapture into Applications.
 Images	Images
 Images par seconde	Frames per second
 Impossible d'ouvrir l'image : {0}	Cannot open the image: {0}
@@ -198,15 +208,20 @@ Loupe (M)	Magnifier (M)
 Loupe de précision	Precision magnifier
 Main levée (P)	Freehand (P)
 Maj	Shift
+Mettre à jour	Update
 Micro « {0} » introuvable : enregistrement sans le son	Microphone “{0}” not found: recording without sound
 Microphone	Microphone
 Miniature	Thumbnail
+Mise à jour impossible : {0}	Update failed: {0}
+Mises à jour	Updates
 Mode de suppression	Deletion mode
 Modifications enregistrées	Changes saved
+Modifier le contenu (double-clic)	Edit content (double-click)
 NOUVEAU	NEW
 Nettoyer maintenant	Clean up now
 Non disponible pour le format GIF	Not available for the GIF format
 Non enregistré (déjà utilisé par une autre application, ou syntaxe invalide)	Not registered (already used by another application, or invalid syntax)
+Nouveautés	What's new
 Nouvelle capture	New capture
 Nouvelle taille : {0} × {1} px	New size: {0} × {1} px
 Nuancier des styles	Style palette
@@ -231,6 +246,7 @@ Pivoter à gauche	Rotate left
 Plein écran	Full screen
 Plein écran multi-moniteurs, fenêtre active, dernière zone, capture différée	Multi-monitor full screen, active window, last area, delayed capture
 Plein écran\t{0}	Full screen\t{0}
+Plus tard	Later
 Pointillés	Dashed
 Premier plan	Bring to front
 Presse-papiers indisponible	Clipboard unavailable
@@ -243,6 +259,9 @@ REFUSÉ	REJECTED
 Raccord	Seam
 Raccourcis clavier globaux	Global keyboard shortcuts
 Raccourcis clavier globaux configurables, icône de notification	Configurable global keyboard shortcuts, notification icon
+Recherche de mise à jour impossible : {0}	Cannot check for updates: {0}
+Rechercher les mises à jour	Check for updates
+Rechercher maintenant	Check now
 Rechercher…	Search…
 Reconnaissance du texte…	Recognizing text…
 Rectangle (R)	Rectangle (R)
@@ -255,6 +274,7 @@ Renumérote les pastilles dans l'ordre de création, à partir de 1	Renumbers th
 Renuméroter dans l'ordre	Renumber in order
 Retire une bande de l'image et recolle les deux morceaux.	Removes a strip from the image and joins the two pieces back together.
 Retirer cette couleur	Remove this color
+Retirer de la sélection	Remove from selection
 Retour à l'espace de travail	Back to the workspace
 Rien	Nothing
 Rien à supprimer pour l'instant. Vérification au démarrage puis toutes les heures.	Nothing to delete for now. Checked at startup and then every hour.
@@ -267,6 +287,8 @@ Sans le son  •  M pour l'activer	No sound  •  M to turn it on
 Sans le son  •  aucun micro choisi dans les Paramètres	No sound  •  no microphone chosen in Settings
 Sans le son : aucun micro choisi dans les Paramètres (ou GIF)	No sound: no microphone chosen in Settings (or GIF)
 ScreenCapture est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence GNU GPL, version 3 ou ultérieure. Il est fourni sans aucune garantie.	ScreenCapture is free software: you can redistribute it and modify it under the terms of the GNU GPL, version 3 or later. It comes with no warranty.
+ScreenCapture est à jour (version {0})	ScreenCapture is up to date (version {0})
+ScreenCapture {0} est disponible (version actuelle : {1}).	ScreenCapture {0} is available (current version: {1}).
 ScreenCapture — {0} pour capturer	ScreenCapture — {0} to capture
 Seuls les fichiers créés par ScreenCapture (Capture_…, Video_…, Collage_…) sont concernés. Les captures épinglées ({0} sur une vignette) et celle ouverte dans l'éditeur ne sont jamais supprimées. L'âge se compte depuis la création du fichier.	Only files created by ScreenCapture (Capture_…, Video_…, Collage_…) are affected. Pinned captures ({0} on a thumbnail) and the one open in the editor are never deleted. Age is counted from the file's creation.
 Sombre	Dark
@@ -287,38 +309,55 @@ Sélectionnez une zone de l'image puis faites-la glisser. L'emplacement d'origin
 Taille du texte	Text size
 Taille maximale du dossier	Maximum folder size
 Tampon (S)	Stamp (S)
+Tampon personnalisé	Custom stamp
 Tampons	Stamps
 Texte (T)	Text (T)
 Texte extrait	Extracted text
 Thème	Theme
 Tout	All
+Tout sélectionner (Ctrl+A)	Select all (Ctrl+A)
 Transparent	Transparent
+Téléchargement…	Downloading…
+Télécharger	Download
 Utilisé : {0}	Used: {0}
 VALIDÉ	VALIDATED
 Valeur	Value
 Valeurs par défaut	Defaults
+Version {0}	Version {0}
 Version {0}  •  Rust + egui  •  Material Design 3	Version {0}  •  Rust + egui  •  Material Design 3
 Verticale	Vertical
 Vidéo	Video
 Vidéo (démarrer / arrêter)	Video (start / stop)
 Vidéo enregistrée : {0}	Video saved: {0}
 Vidéos	Videos
+Votre texte…	Your text…
 Win	Win
 Zigzag	Zigzag
 Zone	Area
 Zoom arrière	Zoom out
 Zoom avant	Zoom in
+archive illisible	unreadable archive
 aucun écran	no screen
+aucune version publiée n'est accessible pour l'instant	no published version is available yet
+connexion sécurisée à GitHub impossible	cannot establish a secure connection to GitHub
 conversion GIF échouée	GIF conversion failed
+empreinte du fichier téléchargé incorrecte	wrong fingerprint for the downloaded file
 envoyée(s) dans la Corbeille	moved to the Recycle Bin
 envoyées dans la Corbeille	moved to the Recycle Bin
 erreur interne pendant la capture	internal error during capture
+fichier téléchargé incomplet	incomplete download
 format d'image inattendu	unexpected image format
 i, ii, iii	i, ii, iii
+le serveur de GitHub a répondu par une erreur	the GitHub server returned an error
+pas de connexion à Internet	no Internet connection
+réponse inattendue de GitHub	unexpected response from GitHub
 suppression impossible (code {0})	cannot delete (code {0})
 suppression impossible : {0}	cannot delete: {0}
 supprimée(s)	deleted
 supprimées définitivement	permanently deleted
+téléchargement impossible	download failed
+version installée	installed version
+version portable	portable version
 zone hors de l'écran	area off screen
 zone trop petite pour une vidéo	area too small for a video
 zone vide	empty area
@@ -337,6 +376,7 @@ zone vide	empty area
 {0} captures ({1})	{0} captures ({1})
 {0} captures désépinglées	{0} captures unpinned
 {0} captures envoyées dans la Corbeille	{0} captures moved to the Recycle Bin
+{0} captures sélectionnées	{0} captures selected
 {0} captures épinglées	{0} captures pinned
 {0} images ajoutées au dossier des captures	{0} images added to the captures folder
 {0} px retirés	{0} px removed
@@ -354,5 +394,5 @@ zone vide	empty area
 Éditeur	Editor
 Éditeur : flèches, formes, surligneur, flou, texte, bulles, numéros, loupe, tampons, rognage, rotation	Editor: arrows, shapes, highlighter, blur, text, bubbles, numbers, magnifier, stamps, crop, rotation
 Épaisseur	Thickness
+Épingler	Pin
 Épingler : jamais supprimée automatiquement	Pin: never deleted automatically
-•  {0} sélectionnées  •  Suppr pour les supprimer	•  {0} selected  •  Del to delete them

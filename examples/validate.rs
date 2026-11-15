@@ -168,6 +168,10 @@ mod win {
     fn mouse_to(x: i32, y: i32) {
         unsafe {
             let _ = SetCursorPos(x, y);
+            // Vrai mouvement (aller-retour d'un pixel) : SetCursorPos seul n'envoie pas toujours de
+            // déplacement à la fenêtre, qui recevrait alors le clic à l'ancienne position.
+            mouse_event(MOUSE_EVENT_FLAGS(1), 1, 0, 0, 0);
+            mouse_event(MOUSE_EVENT_FLAGS(1), -1, 0, 0, 0);
         }
     }
 
@@ -283,6 +287,7 @@ mod win {
             o.insert("retention_max_mb".into(), 0.into());
             o.insert("retention_to_trash".into(), true.into());
             o.insert("pinned".into(), serde_json::json!([]));
+            o.insert("check_updates".into(), false.into());
             for (k, v) in &self.extra {
                 o.insert(k.clone(), v.clone());
             }
@@ -757,8 +762,8 @@ mod win {
             fmt(virtual_screen())
         );
         println!("{env}");
-        // Les traces de diagnostic (D…) ne tournent que si on les demande.
-        let run = |id: &str| if filter.is_empty() { !id.starts_with('D') } else { filter.split(',').any(|f| id.starts_with(f)) };
+        // Les traces de diagnostic (D…) et les captures de l'aide (H…) ne tournent que si on les demande.
+        let run = |id: &str| if filter.is_empty() { !id.starts_with('D') && !id.starts_with('H') } else { filter.split(',').any(|f| id.starts_with(f)) };
 
         let scenarios: Vec<(&str, fn(&mut Bench))> = vec![
             ("S01", s01_demarrage),
@@ -790,6 +795,9 @@ mod win {
             ("S27", s27_bandeau_aide),
             ("S28", s28_conservation),
             ("S29", s29_langues),
+            ("S30", s30_editeur_dupliquer_modifier),
+            ("S31", s31_selection_par_case),
+            ("H1", h1_aide),
             ("D1", d1_trace_deplacement),
             ("D2", d2_trace_retour),
         ];
@@ -1144,6 +1152,7 @@ mod win {
     fn s16_film_fenetre_reduite(b: &mut Bench) {
         b.scenario("S16", "Film : la fenêtre réduite n'apparaît jamais pendant deux captures");
         b.start("ShowWorkspace", false);
+        center_main(b);
         let m = b.main().unwrap();
         std::thread::sleep(Duration::from_millis(500));
         let reference = grab_region(m.r);
@@ -1503,6 +1512,7 @@ mod win {
             std::thread::sleep(Duration::from_millis(60));
         }
         b.start("ShowWorkspace", false);
+        center_main(b);
         std::thread::sleep(Duration::from_millis(1500));
         let cards = b.cards();
         b.check("six vignettes affichées", cards.len() == 6, &format!("{}", cards.len()));
@@ -1804,6 +1814,367 @@ mod win {
                 b.check(&format!("{lang} : page {page} affichée"), m.r.2 > 0 && m.r.3 > 0, &fmt(m.r));
             }
         }
+    }
+
+    // ------------------------------------------------------------------ aide (captures génériques)
+
+    /// Image de démonstration générique : maquette de tableau de bord (aucun contenu réel).
+    fn demo_image(seed: u32) -> image::RgbaImage {
+        let (w, h) = (1280u32, 800u32);
+        let accents = [[103u8, 80, 164], [0, 121, 107], [211, 84, 0], [25, 118, 210], [194, 24, 91], [56, 142, 60]];
+        let a = accents[seed as usize % accents.len()];
+        let mut img = image::RgbaImage::from_pixel(w, h, image::Rgba([246, 247, 251, 255]));
+        let rect = |img: &mut image::RgbaImage, x: u32, y: u32, rw: u32, rh: u32, c: [u8; 3]| {
+            for yy in y..(y + rh).min(h) {
+                for xx in x..(x + rw).min(w) {
+                    img.put_pixel(xx, yy, image::Rgba([c[0], c[1], c[2], 255]));
+                }
+            }
+        };
+        let light = |c: [u8; 3], k: f32| [(c[0] as f32 + (255.0 - c[0] as f32) * k) as u8, (c[1] as f32 + (255.0 - c[1] as f32) * k) as u8, (c[2] as f32 + (255.0 - c[2] as f32) * k) as u8];
+        rect(&mut img, 0, 0, w, 64, a);
+        rect(&mut img, 0, 64, 220, h - 64, [234, 236, 243]);
+        for i in 0..6 {
+            rect(&mut img, 24, 96 + i * 52, 150 - (i * 13) % 50, 14, [190, 194, 206]);
+        }
+        rect(&mut img, 24, 22, 180, 20, light(a, 0.6));
+        // Trois cartes à barres.
+        for k in 0..3u32 {
+            let (cx, cy) = (252 + k * 336, 96);
+            rect(&mut img, cx, cy, 312, 300, [255, 255, 255]);
+            rect(&mut img, cx + 20, cy + 20, 120, 12, [200, 204, 214]);
+            for b in 0..7u32 {
+                let v = 40 + ((b * 37 + k * 53 + seed * 29) % 160);
+                rect(&mut img, cx + 24 + b * 40, cy + 270 - v, 26, v, light(a, 0.15 * k as f32));
+            }
+        }
+        // Courbe.
+        rect(&mut img, 252, 420, 1000, 340, [255, 255, 255]);
+        rect(&mut img, 272, 440, 160, 12, [200, 204, 214]);
+        let mut prev = None;
+        for x in 0..940u32 {
+            let t = x as f32 / 60.0 + seed as f32;
+            let y = 600.0 - 90.0 * (t.sin() * 0.6 + (t * 0.37).cos() * 0.4) - x as f32 * 0.08;
+            let p = (282 + x, y as u32);
+            if let Some((px, py)) = prev {
+                let (lo, hi): (u32, u32) = if py < p.1 { (py, p.1) } else { (p.1, py) };
+                for yy in lo..=hi {
+                    for d in 0..3 {
+                        img.put_pixel(px, (yy + d).min(h - 1), image::Rgba([a[0], a[1], a[2], 255]));
+                    }
+                }
+            }
+            prev = Some(p);
+        }
+        img
+    }
+
+    /// Enregistre une capture de l'aide (réduite à 1100 px de large, JPEG).
+    fn save_help_shot(img: &image::RgbaImage, dir: &Path, name: &str) {
+        let w = img.width().min(1100);
+        let h = (img.height() as f32 * w as f32 / img.width() as f32) as u32;
+        let small = image::imageops::resize(img, w, h, image::imageops::FilterType::Lanczos3);
+        let rgb = image::DynamicImage::ImageRgba8(small).to_rgb8();
+        let mut out = std::fs::File::create(dir.join(format!("{name}.jpg"))).unwrap();
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 85).encode_image(&rgb).unwrap();
+    }
+
+    /// Captures d'écran de l'aide, dans chaque langue, avec des images de démonstration et un
+    /// dossier de captures neutre (rien de la machine de test n'apparaît).
+    fn h1_aide(b: &mut Bench) {
+        b.scenario("H1", "Captures d'écran de l'aide (contenu générique)");
+        let real_captures = b.captures.clone();
+        let demo = PathBuf::from(r"C:\Users\Public\Pictures\ScreenCapture");
+        let _ = std::fs::remove_dir_all(&demo);
+        std::fs::create_dir_all(&demo).unwrap();
+        b.captures = demo.clone();
+        let names = ["Capture_2026-03-02_09-14-05", "Capture_2026-03-02_10-41-37", "Capture_2026-03-03_14-02-11", "Capture_2026-03-04_08-55-49", "Capture_2026-03-04_16-20-03", "Capture_2026-03-05_11-07-26"];
+        for (i, n) in names.iter().enumerate() {
+            demo_image(i as u32).save(demo.join(format!("{n}.png"))).unwrap();
+            std::thread::sleep(Duration::from_millis(60));
+        }
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("help").join("img");
+        let primary = monitors().into_iter().find(|(m, _)| m.0 == 0 && m.1 == 0).or(monitors().into_iter().next()).unwrap();
+        // Fond générique plein écran : le bureau réel n'apparaît ni autour des fenêtres ni dans la
+        // sélection (qui fige l'écran).
+        let wall = std::env::temp_dir().join("sc_demo_backdrop.png");
+        image::imageops::resize(&demo_image(3), 2560, 1600, image::imageops::FilterType::Triangle).save(&wall).unwrap();
+        let backdrop_exe = b.exe.parent().unwrap().join("examples").join("demo_backdrop.exe");
+        let mut backdrop = match Command::new(&backdrop_exe).arg(&wall).spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                b.check("fond de démonstration lancé", false, &format!("{} : {e}", backdrop_exe.display()));
+                b.captures = real_captures;
+                return;
+            }
+        };
+        std::thread::sleep(Duration::from_secs(2));
+        for lang in ["fr", "en", "es", "de"] {
+            let dir = root.join(lang);
+            std::fs::create_dir_all(&dir).unwrap();
+            let code = match lang { "fr" => "Fr", "en" => "En", "es" => "Es", _ => "De" };
+            b.extra = vec![("language".into(), code.into()), ("custom_stamp".into(), "".into())];
+            b.start("ShowWorkspace", false);
+            b.extra.clear();
+            // Le contenu de la fenêtre au centre de l'écran principal, taille par défaut.
+            let Some(m) = b.main() else { continue };
+            b.move_main(primary.1 .0 + (primary.1 .2 - m.r.2) / 2, primary.1 .1 + (primary.1 .3 - m.r.3) / 2);
+            std::thread::sleep(Duration::from_millis(1500));
+
+            // 1) Espace de travail, deux captures sélectionnées par leur case.
+            b.cmd("home", 900);
+            let mark = b.log_mark();
+            b.cmd("cards", 700);
+            let cards: Vec<(f32, f32)> = b
+                .log_since(mark)
+                .lines()
+                .filter_map(|l| {
+                    let mut it = l.split("carte ").nth(1)?.split(' ').skip(1);
+                    Some((it.next()?.parse().ok()?, it.next()?.parse().ok()?))
+                })
+                .collect();
+            let scale = scale_at(primary.0 .0 + 10, primary.0 .1 + 10);
+            for &(x, y) in cards.iter().skip(1).take(2) {
+                b.click((x + 24.0 * scale) as i32, (y + 24.0 * scale) as i32, &[]);
+                std::thread::sleep(Duration::from_millis(700));
+            }
+            std::thread::sleep(Duration::from_millis(500));
+            if let Some(m) = b.main() {
+                save_help_shot(&window_shot(m.r), &dir, "accueil");
+            }
+            b.key(VK_ESCAPE, &[]);
+
+            // 2) Paramètres (haut de la page).
+            b.cmd("settings", 1200);
+            if let Some(m) = b.main() {
+                save_help_shot(&window_shot(m.r), &dir, "parametres");
+            }
+
+            // 3) Éditeur avec quelques annotations.
+            b.cmd("editor", 1800);
+            if let Some(m) = b.main() {
+                let s = scale;
+                let (l, t) = (m.r.0 as f32, m.r.1 as f32);
+                // Zone de dessin approximative : entre la barre d'outils et le panneau de droite.
+                let cx = l + (m.r.2 as f32 - 300.0 * s) / 2.0 + 30.0 * s;
+                let cy = t + m.r.3 as f32 / 2.0 + 20.0 * s;
+                let at = |dx: f32, dy: f32| ((cx + dx * s) as i32, (cy + dy * s) as i32);
+                if b.key(0x52, &[]) {
+                    let (x1, y1) = at(-210.0, -160.0);
+                    let (x2, y2) = at(-40.0, -40.0);
+                    b.drag(x1, y1, x2, y2);
+                }
+                if b.key(0x41, &[]) {
+                    let (x1, y1) = at(120.0, 120.0);
+                    let (x2, y2) = at(10.0, 40.0);
+                    b.drag(x1, y1, x2, y2);
+                }
+                if b.key(0x4E, &[]) {
+                    for (dx, dy) in [(-230.0, -180.0), (150.0, -150.0), (-220.0, 90.0)] {
+                        let (x, y) = at(dx, dy);
+                        b.click(x, y, &[]);
+                    }
+                }
+                if b.key(0x53, &[]) {
+                    let (x, y) = at(170.0, 150.0);
+                    b.click(x, y, &[]);
+                }
+                b.key(0x56, &[]);
+                let (x, y) = at(0.0, 230.0);
+                mouse_to(x, y);
+                std::thread::sleep(Duration::from_millis(400));
+                if let Some(m) = b.main() {
+                    save_help_shot(&window_shot(m.r), &dir, "editeur");
+                }
+
+                // 4) Sélection d'une zone (au-dessus de l'éditeur, plein écran).
+                unsafe {
+                    let _ = ShowWindow(HWND(m.hwnd as *mut _), SW_MAXIMIZE);
+                }
+                std::thread::sleep(Duration::from_millis(1200));
+                b.cmd("region", 1500);
+                let wa = primary.1;
+                let (x1, y1) = (wa.0 + wa.2 * 30 / 100, wa.1 + wa.3 * 28 / 100);
+                let (x2, y2) = (wa.0 + wa.2 * 62 / 100, wa.1 + wa.3 * 64 / 100);
+                mouse_to(x1, y1);
+                std::thread::sleep(Duration::from_millis(200));
+                mouse_button(true);
+                for i in 1..=12 {
+                    mouse_to(x1 + (x2 - x1) * i / 12, y1 + (y2 - y1) * i / 12);
+                    std::thread::sleep(Duration::from_millis(30));
+                }
+                std::thread::sleep(Duration::from_millis(700));
+                save_help_shot(&grab_region(primary.0), &dir, "selection");
+                b.key(VK_ESCAPE, &[]);
+                mouse_button(false);
+                std::thread::sleep(Duration::from_millis(600));
+            }
+            b.check(&format!("{lang} : 4 captures de l'aide"), ["accueil", "parametres", "editeur", "selection"].iter().all(|n| dir.join(format!("{n}.jpg")).is_file()), &dir.display().to_string());
+            b.kill();
+        }
+        let _ = backdrop.kill();
+        let _ = backdrop.wait();
+        b.captures = real_captures;
+        let _ = std::fs::remove_dir_all(&demo);
+    }
+
+    /// Fenêtre sans sa bordure invisible de redimensionnement (8 px à gauche, à droite et en bas).
+    fn window_shot(r: (i32, i32, i32, i32)) -> image::RgbaImage {
+        let s = scale_at(r.0 + r.2 / 2, r.1 + r.3 / 2);
+        let e = (7.0 * s).round() as i32;
+        grab_region((r.0 + e, r.1, r.2 - 2 * e, r.3 - e))
+    }
+
+    /// État de l'éditeur dans le journal : « éditeur formes=… numéros=[…] tampons=[…] ».
+    fn editor_state(b: &Bench) -> String {
+        let mark = b.log_mark();
+        b.cmd("state", 600);
+        b.log_since(mark).split("| éditeur ").nth(1).map(|s| s.lines().next().unwrap_or("").to_string()).unwrap_or_default()
+    }
+
+    fn double_click(x: i32, y: i32) {
+        mouse_to(x, y);
+        std::thread::sleep(Duration::from_millis(150));
+        for _ in 0..2 {
+            mouse_button(true);
+            std::thread::sleep(Duration::from_millis(40));
+            mouse_button(false);
+            std::thread::sleep(Duration::from_millis(60));
+        }
+        std::thread::sleep(Duration::from_millis(400));
+    }
+
+    /// Fenêtre principale au centre de l'écran principal, au premier plan (tests à la souris).
+    fn center_main(b: &Bench) {
+        let primary = monitors().into_iter().find(|(m, _)| m.0 == 0 && m.1 == 0).or(monitors().into_iter().next()).unwrap();
+        b.cmd("show", 700);
+        if let Some(m) = b.main() {
+            b.move_main(primary.1 .0 + (primary.1 .2 - m.r.2) / 2, primary.1 .1 + (primary.1 .3 - m.r.3) / 2);
+        }
+        b.cmd("show", 900);
+    }
+
+    fn s30_editeur_dupliquer_modifier(b: &mut Bench) {
+        b.scenario("S30", "Éditeur : dupliquer (Ctrl+D) et modifier un numéro ou un tampon par double-clic");
+        b.kill();
+        for e in std::fs::read_dir(&b.captures).into_iter().flatten().flatten() {
+            let _ = std::fs::remove_file(e.path());
+        }
+        demo_image(1).save(b.captures.join("Capture_demo.png")).unwrap();
+        b.start("ShowWorkspace", false);
+        center_main(b);
+        b.cmd("editor", 1800);
+        let Some(m) = b.main() else {
+            b.check("éditeur ouvert", false, "");
+            return;
+        };
+        let s = scale_at(m.r.0 + m.r.2 / 2, m.r.1 + m.r.3 / 2);
+        let cx = m.r.0 as f32 + (m.r.2 as f32 - 300.0 * s) / 2.0 + 30.0 * s;
+        let cy = m.r.1 as f32 + m.r.3 as f32 / 2.0 + 20.0 * s;
+        let at = |dx: f32, dy: f32| ((cx + dx * s) as i32, (cy + dy * s) as i32);
+        b.check("éditeur ouvert", editor_state(b).contains("formes=0"), &editor_state(b));
+
+        // Deux numéros, puis le premier dupliqué : il prend le numéro suivant (3).
+        if !b.key(0x4E, &[]) {
+            return;
+        }
+        for (dx, dy) in [(-120.0, -60.0), (120.0, -60.0)] {
+            let (x, y) = at(dx, dy);
+            b.click(x, y, &[]);
+            std::thread::sleep(Duration::from_millis(400));
+        }
+        b.key(0x56, &[]);
+        let (x, y) = at(-120.0, -60.0);
+        b.click(x, y, &[]);
+        b.key(0x44, &[VK_CONTROL]);
+        let st = editor_state(b);
+        b.check("Ctrl+D : copie ajoutée avec le numéro suivant", st.contains("formes=3") && st.contains("numéros=[1,2,3]"), &st);
+
+        // Double-clic sur le numéro 2 : saisie de 7 puis Entrée.
+        let (x, y) = at(120.0, -60.0);
+        // (pas de lecture de l'état ici : la commande de test ferait perdre le focus à la saisie)
+        double_click(x, y);
+        b.key(0x67, &[]); // pavé numérique : « 7 » quelle que soit la disposition du clavier (AZERTY)
+        b.key(VK_RETURN, &[]);
+        let st = editor_state(b);
+        b.check("numéro modifié : 2 → 7", st.contains("numéros=[1,7,3]") && st.contains("édition=None"), &st);
+
+        // Tampon posé puis renommé par double-clic.
+        b.key(0x53, &[]);
+        let (x, y) = at(0.0, 110.0);
+        b.click(x, y, &[]);
+        std::thread::sleep(Duration::from_millis(400));
+        b.key(0x56, &[]);
+        double_click(x, y);
+        for k in [0x4F, 0x4B] {
+            b.key(k, &[]);
+        }
+        b.key(VK_RETURN, &[]);
+        let st = editor_state(b);
+        b.check("double-clic sur un tampon : texte remplacé", st.contains("tampons=[ok]"), &st);
+        b.shot("S30_editeur");
+        // Rien d'enregistré : fermer l'éditeur sans enregistrer.
+        b.kill();
+    }
+
+    fn s31_selection_par_case(b: &mut Bench) {
+        b.scenario("S31", "Espace de travail : sélection par la case des vignettes et suppression groupée");
+        b.kill();
+        for e in std::fs::read_dir(&b.captures).into_iter().flatten().flatten() {
+            let _ = std::fs::remove_file(e.path());
+        }
+        for i in 1..=4u32 {
+            demo_image(i).save(b.captures.join(format!("Test_case_{i}.png"))).unwrap();
+            std::thread::sleep(Duration::from_millis(60));
+        }
+        b.start("ShowWorkspace", false);
+        center_main(b);
+        std::thread::sleep(Duration::from_millis(1500));
+        let mark = b.log_mark();
+        b.cmd("cards", 700);
+        let cards: Vec<(String, f32, f32, f32, f32)> = b
+            .log_since(mark)
+            .lines()
+            .filter_map(|l| {
+                let mut it = l.split("carte ").nth(1)?.splitn(6, ' ').skip(1);
+                Some((0.0, 0.0, 0.0, 0.0)).and_then(|_| {
+                    let (x, y, w, h) = (it.next()?.parse().ok()?, it.next()?.parse().ok()?, it.next()?.parse().ok()?, it.next()?.parse().ok()?);
+                    Some((it.next()?.trim().to_string(), x, y, w, h))
+                })
+            })
+            .collect();
+        b.check("quatre vignettes", cards.len() == 4, &format!("{}", cards.len()));
+        if cards.len() < 4 {
+            return;
+        }
+        let s = scale_at(cards[0].1 as i32, cards[0].2 as i32);
+        let check = |i: usize| ((cards[i].1 + 24.0 * s) as i32, (cards[i].2 + 24.0 * s) as i32);
+        // Haut de la miniature, à droite de la case (loin de la barre d'actions du bas).
+        let body = |i: usize| ((cards[i].1 + cards[i].3 * 0.6) as i32, (cards[i].2 + 34.0 * s) as i32);
+
+        let (x, y) = check(0);
+        b.click(x, y, &[]);
+        b.check("clic sur la case : 1 sélectionnée", b.selected_count() == Some(1), &format!("{:?}", b.selected_count()));
+        std::thread::sleep(Duration::from_millis(500));
+        let (x, y) = body(2);
+        b.click(x, y, &[]);
+        b.check("puis clic simple sur une autre vignette : 2 sélectionnées", b.selected_count() == Some(2), &format!("{:?}", b.selected_count()));
+        std::thread::sleep(Duration::from_millis(500));
+        let (x, y) = body(3);
+        b.click(x, y, &[]);
+        std::thread::sleep(Duration::from_millis(500));
+        let (x, y) = body(3);
+        b.click(x, y, &[]);
+        b.check("nouveau clic : la vignette est retirée (2 sélectionnées)", b.selected_count() == Some(2), &format!("{:?}", b.selected_count()));
+        b.shot("S31_selection");
+        let removed = [cards[0].0.clone(), cards[2].0.clone()];
+        if b.key(VK_DELETE, &[]) {
+            std::thread::sleep(Duration::from_millis(500));
+            b.key(VK_RETURN, &[]);
+            std::thread::sleep(Duration::from_millis(1500));
+        }
+        let files = b.capture_files("png");
+        b.check("suppression groupée : les 2 captures sélectionnées", removed.iter().all(|r| !files.contains(r)) && files.len() == 2, &format!("{files:?}"));
     }
 
     fn s28_conservation(b: &mut Bench) {

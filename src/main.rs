@@ -5,6 +5,7 @@ mod app;
 mod capture;
 mod diag;
 mod editor;
+mod help;
 mod i18n;
 mod icon;
 mod overlay;
@@ -14,6 +15,7 @@ mod retention;
 mod settings;
 mod texture;
 mod theme;
+mod update;
 mod workspace;
 
 use std::sync::Arc;
@@ -32,6 +34,7 @@ use eframe::egui;
 
 fn main() -> eframe::Result<()> {
     diag::init();
+    update::cleanup_after_update();
     // Pilotage de l'instance en cours (tests de validation) : `ScreenCapture.exe --cmd region`.
     let args: Vec<String> = std::env::args().collect();
     if let Some(i) = args.iter().position(|a| a == "--cmd") {

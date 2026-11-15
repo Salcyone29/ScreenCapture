@@ -18,17 +18,45 @@ struct Fonts {
     bold: Option<FontVec>,
 }
 
+/// Polices du système, par ordre de préférence : (fichier, indice dans une collection .ttc).
+fn system_candidates(bold: bool) -> Vec<(String, u32)> {
+    if cfg!(windows) {
+        let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
+        let names: &[&str] = if bold { &["segoeuib.ttf", "arialbd.ttf"] } else { &["segoeui.ttf", "arial.ttf"] };
+        names.iter().map(|n| (format!("{windir}\\Fonts\\{n}"), 0)).collect()
+    } else {
+        // macOS : Arial (Supplemental selon les versions), puis Helvetica (collection .ttc).
+        let files: &[(&str, u32)] = if bold {
+            &[
+                ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
+                ("/Library/Fonts/Arial Bold.ttf", 0),
+                ("/System/Library/Fonts/Helvetica.ttc", 1),
+            ]
+        } else {
+            &[
+                ("/System/Library/Fonts/Supplemental/Arial.ttf", 0),
+                ("/Library/Fonts/Arial.ttf", 0),
+                ("/System/Library/Fonts/Helvetica.ttc", 0),
+            ]
+        };
+        files.iter().map(|(f, i)| (f.to_string(), *i)).collect()
+    }
+}
+
+fn load_font(bold: bool) -> Option<FontVec> {
+    system_candidates(bold)
+        .into_iter()
+        .find_map(|(file, index)| std::fs::read(&file).ok().and_then(|b| FontVec::try_from_vec_and_index(b, index).ok()))
+        // Repli toujours disponible : la police intégrée à egui (le texte n'est jamais vide).
+        .or_else(|| {
+            let defs = eframe::egui::FontDefinitions::default();
+            defs.font_data.get("Ubuntu-Light").and_then(|d| FontVec::try_from_vec_and_index(d.font.to_vec(), d.index).ok())
+        })
+}
+
 fn fonts() -> &'static Fonts {
     static F: OnceLock<Fonts> = OnceLock::new();
-    F.get_or_init(|| {
-        let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
-        let load = |names: &[&str]| {
-            names.iter().find_map(|n| {
-                std::fs::read(format!("{windir}\\Fonts\\{n}")).ok().and_then(|b| FontVec::try_from_vec(b).ok())
-            })
-        };
-        Fonts { regular: load(&["segoeui.ttf", "arial.ttf"]), bold: load(&["segoeuib.ttf", "arialbd.ttf", "segoeui.ttf"]) }
-    })
+    F.get_or_init(|| Fonts { regular: load_font(false), bold: load_font(true) })
 }
 
 fn font(bold: bool) -> Option<&'static FontVec> {
@@ -623,5 +651,14 @@ mod tests {
         assert_eq!(out.dimensions(), (60, 50 + ZIG_GAP + 50));
         assert_eq!(out.get_pixel(7, 0).0[1], 0);
         assert_eq!(out.get_pixel(7, out.height() - 1).0[1], 199);
+    }
+    /// Police de repli intégrée (macOS sans Arial ni Helvetica lisibles) : le texte reste visible.
+    #[test]
+    fn police_de_repli() {
+        let defs = eframe::egui::FontDefinitions::default();
+        let d = &defs.font_data["Ubuntu-Light"];
+        let f = FontVec::try_from_vec_and_index(d.font.to_vec(), d.index).expect("police intégrée");
+        assert!(f.glyph_id('A').0 != 0);
+        assert!(load_font(false).is_some() && load_font(true).is_some());
     }
 }

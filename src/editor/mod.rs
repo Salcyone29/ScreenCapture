@@ -60,7 +60,9 @@ pub struct Editor {
     selected: Option<usize>,
     next_number: u32,
     number_format: NumberFormat,
-    stamp: usize,
+    /// Tampon choisi : prédéfini (indice) ou personnalisé (`None`, texte `custom_stamp`).
+    stamp: Option<usize>,
+    custom_stamp: String,
     composite: RgbaImage,
     texture: Option<TiledTexture>,
     dirty: bool,
@@ -100,7 +102,8 @@ impl Editor {
             selected: None,
             next_number: 1,
             number_format: NumberFormat::Decimal,
-            stamp: 0,
+            stamp: Some(0),
+            custom_stamp: String::new(),
             texture: None,
             dirty: true,
             zoom: 1.0,
@@ -119,6 +122,13 @@ impl Editor {
             style_edit_open: false,
             hover_px: None,
         }
+    }
+
+    /// Résumé des formes pour le journal (tests de validation) : nombre, numéros, tampons.
+    pub fn summary(&self) -> String {
+        let numbers: Vec<String> = self.shapes.iter().filter_map(|s| match &s.kind { Kind::Number(n, _) => Some(n.to_string()), _ => None }).collect();
+        let stamps: Vec<&str> = self.shapes.iter().filter_map(|s| match &s.kind { Kind::Stamp(t) => Some(t.as_str()), _ => None }).collect();
+        format!("formes={} numéros=[{}] tampons=[{}] sélection={:?} édition={:?}", self.shapes.len(), numbers.join(","), stamps.join(","), self.selected, self.editing)
     }
 
     pub fn title(&self) -> String {
@@ -319,7 +329,8 @@ impl Editor {
     fn begin_text(&mut self, idx: usize) {
         self.editing = Some(idx);
         self.text_buf = match &self.shapes[idx].kind {
-            Kind::Text(t) | Kind::Bubble(t) => t.clone(),
+            Kind::Text(t) | Kind::Bubble(t) | Kind::Stamp(t) => t.clone(),
+            Kind::Number(n, f) => f.format(*n),
             _ => String::new(),
         };
         self.focus_text = true;
@@ -333,6 +344,12 @@ impl Editor {
             return;
         }
         let text = self.text_buf.trim_end().to_string();
+        // Numéro et tampon : une saisie vide ou invalide garde la valeur d'avant.
+        if matches!(self.shapes[idx].kind, Kind::Number(..) | Kind::Stamp(_)) {
+            self.apply_inline_value(idx, &text);
+            self.dirty = true;
+            return;
+        }
         if text.is_empty() {
             self.shapes.remove(idx);
             self.selected = None;
@@ -441,6 +458,48 @@ impl Editor {
         }
     }
 
+    /// Valeur saisie pour un numéro (selon son format : 5, e, IV…) ou un tampon (texte). Le tampon
+    /// garde son centre quand son texte change de longueur.
+    fn apply_inline_value(&mut self, idx: usize, text: &str) {
+        let s = &mut self.shapes[idx];
+        match &mut s.kind {
+            Kind::Number(n, f) => {
+                if let Some(v) = f.parse(text.trim()).filter(|v| (1..=9999).contains(v)) {
+                    *n = v;
+                }
+            }
+            Kind::Stamp(t) => {
+                let text = text.trim();
+                if !text.is_empty() && *t != text {
+                    *t = text.to_string();
+                    let center = s.rect().center();
+                    let (w, h) = render::text_box_size(s);
+                    s.a = center - vec2(w, h) / 2.0;
+                    s.b = s.a + vec2(w, h);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Duplique la forme sélectionnée, décalée, et sélectionne la copie. Un numéro dupliqué
+    /// prend le numéro suivant de la série.
+    fn duplicate_selected(&mut self) {
+        let Some(i) = self.selected.filter(|i| *i < self.shapes.len()) else { return };
+        self.commit_text();
+        self.push_undo();
+        let mut copy = self.shapes[i].clone();
+        let offset = (16.0 / self.zoom.max(0.05)).clamp(8.0, 60.0);
+        copy.translate(vec2(offset, offset));
+        if let Kind::Number(_, f) = copy.kind {
+            copy.kind = Kind::Number(self.next_number, f);
+            self.next_number += 1;
+        }
+        self.shapes.push(copy);
+        self.selected = Some(self.shapes.len() - 1);
+        self.dirty = true;
+    }
+
     fn shortcuts(&mut self, ctx: &egui::Context, actions: &mut Vec<EditorAction>) {
         if self.editing.is_some() || ctx.wants_keyboard_input() {
             return;
@@ -456,6 +515,9 @@ impl Editor {
             }
             if pressed(Key::C) {
                 actions.push(EditorAction::Copy);
+            }
+            if pressed(Key::D) {
+                self.duplicate_selected();
             }
             if pressed(Key::S) {
                 actions.push(if shift { EditorAction::SaveAs } else { EditorAction::Save });
@@ -713,7 +775,14 @@ impl Editor {
                     self.selected = Some(0);
                     self.dirty = true;
                 }
-                if theme::icon_button(ui, ICON_DELETE, false, crate::i18n::tr("Supprimer (Suppr)")).clicked() {
+                if theme::icon_button(ui, ICON_CONTROL_POINT_DUPLICATE, false, crate::i18n::tr("Dupliquer (Ctrl+D)")).clicked() {
+                    self.duplicate_selected();
+                }
+                if self.shapes[i].is_editable() && theme::icon_button(ui, ICON_EDIT_NOTE, false, crate::i18n::tr("Modifier le contenu (double-clic)")).clicked() {
+                    self.push_undo();
+                    self.begin_text(i);
+                }
+                if theme::icon_button(ui, ICON_DELETE, false, crate::i18n::tr("Supprimer (Suppr)")).clicked() && i < self.shapes.len() && self.editing.is_none() {
                     self.push_undo();
                     self.shapes.remove(i);
                     self.selected = None;
@@ -871,12 +940,38 @@ impl Editor {
             section(ui, crate::i18n::tr("Tampons"));
             ui.horizontal_wrapped(|ui| {
                 for (i, s) in model::stamps().iter().enumerate() {
-                    if theme::filter_chip(ui, s, self.stamp == i).clicked() {
-                        self.stamp = i;
+                    if theme::filter_chip(ui, s, self.stamp == Some(i)).clicked() {
+                        self.stamp = Some(i);
                     }
                 }
             });
+            // Tampon personnalisé : texte libre, mémorisé dans les paramètres.
+            ui.add_space(6.0);
+            ui.label(crate::i18n::tr("Tampon personnalisé"));
+            let custom = self.stamp.is_none();
+            let r = ui.add(
+                egui::TextEdit::singleline(&mut settings.custom_stamp)
+                    .hint_text(crate::i18n::tr("Votre texte…"))
+                    .desired_width(f32::INFINITY)
+                    .char_limit(40)
+                    .background_color(if custom { p.secondary_container } else { p.surface_high }),
+            );
+            if r.gained_focus() || r.changed() {
+                self.stamp = None;
+            }
+            if r.lost_focus() {
+                if settings.custom_stamp.trim().is_empty() && self.stamp.is_none() {
+                    self.stamp = Some(0);
+                }
+                settings.save();
+            }
+            ui.label(
+                egui::RichText::new(crate::i18n::tr("Cliquer dans le champ pour utiliser ce tampon ; double-cliquer sur un tampon posé pour modifier son texte."))
+                    .size(12.0)
+                    .color(p.on_surface_variant),
+            );
         }
+        self.custom_stamp = settings.custom_stamp.clone();
 
         ui.add_space(10.0);
         ui.separator();
@@ -1007,7 +1102,7 @@ impl Editor {
             if let Some(pos) = resp.interact_pointer_pos() {
                 let ip = to_img(pos);
                 if let Some(i) = self.hit(ip) {
-                    if self.shapes[i].is_textual() {
+                    if self.shapes[i].is_editable() && self.editing != Some(i) {
                         self.push_undo();
                         self.begin_text(i);
                     }
@@ -1298,6 +1393,11 @@ impl Editor {
                 self.shapes.push(Shape { kind, a: ip, b: ip, style: self.style.clone() });
                 self.begin_text(self.shapes.len() - 1);
             }
+            // Clic sur un numéro ou un tampon existant : il est sélectionné (double-clic : modifié)
+            // au lieu d'en poser un nouveau par-dessus.
+            Tool::Number | Tool::Stamp if self.hit(ip).is_some_and(|i| matches!((&self.shapes[i].kind, self.tool), (Kind::Number(..), Tool::Number) | (Kind::Stamp(_), Tool::Stamp))) => {
+                self.selected = self.hit(ip);
+            }
             Tool::Number if inside => {
                 self.push_undo();
                 self.shapes.push(Shape { kind: Kind::Number(self.next_number, self.number_format), a: ip, b: ip, style: self.style.clone() });
@@ -1306,7 +1406,12 @@ impl Editor {
             }
             Tool::Stamp if inside => {
                 self.push_undo();
-                let mut s = Shape { kind: Kind::Stamp(model::stamps()[self.stamp].to_string()), a: ip, b: ip, style: self.style.clone() };
+                let text = match self.stamp {
+                    Some(i) => model::stamps()[i].to_string(),
+                    None => self.custom_stamp.trim().to_string(),
+                };
+                let text = if text.is_empty() { model::stamps()[0].to_string() } else { text };
+                let mut s = Shape { kind: Kind::Stamp(text), a: ip, b: ip, style: self.style.clone() };
                 let (w, h) = render::text_box_size(&s);
                 s.a = ip - vec2(w, h) / 2.0;
                 s.b = s.a + vec2(w, h);
@@ -1334,9 +1439,12 @@ impl Editor {
         let _ = ppp;
         let shape = self.shapes[idx].clone();
         let Some(tex_origin) = self.screen_origin(ctx) else { return };
-        let pos = tex_origin + shape.a.to_vec2() * self.zoom;
-        let font_px = (shape.style.font_size * self.zoom).max(10.0);
+        // Numéro et tampon : saisie sur une ligne, à l'emplacement de la forme (Entrée valide).
+        let single = matches!(shape.kind, Kind::Number(..) | Kind::Stamp(_));
+        let pos = tex_origin + if single { shape.rect().min.to_vec2() } else { shape.a.to_vec2() } * self.zoom;
+        let font_px = (shape.style.font_size * self.zoom).clamp(10.0, if single { 28.0 } else { f32::INFINITY });
         let c = shape.style.color;
+        let before = self.text_buf.clone();
         let mut done = false;
         egui::Area::new(egui::Id::new("text_edit_area"))
             .fixed_pos(pos - vec2(4.0, 4.0))
@@ -1349,19 +1457,30 @@ impl Editor {
                     .inner_margin(Margin::same(4))
                     .show(ui, |ui| {
                         let text_color = if matches!(shape.kind, Kind::Bubble(_)) { Color32::WHITE } else { Color32::from_rgb(c[0], c[1], c[2]) };
-                        let te = egui::TextEdit::multiline(&mut self.text_buf)
+                        let te = if single {
+                            egui::TextEdit::singleline(&mut self.text_buf).desired_width((font_px * 6.0).max(90.0)).char_limit(40)
+                        } else {
+                            egui::TextEdit::multiline(&mut self.text_buf).desired_rows(1).desired_width((font_px * 8.0).max(120.0))
+                        };
+                        let te = te
                             .font(FontId::proportional(font_px))
-                            .text_color(text_color)
+                            .text_color(if single { Color32::from_gray(20) } else { text_color })
                             .frame(false)
-                            .desired_rows(1)
-                            .desired_width((font_px * 8.0).max(120.0))
                             .hint_text(crate::i18n::tr("Saisissez votre texte…"));
                         let r = ui.add(te);
                         if self.focus_text {
                             r.request_focus();
+                            // Le contenu entier est sélectionné : il suffit de taper la nouvelle valeur.
+                            if single {
+                                if let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), r.id) {
+                                    let all = egui::text::CCursorRange::two(egui::text::CCursor::new(0), egui::text::CCursor::new(self.text_buf.chars().count()));
+                                    state.cursor.set_char_range(Some(all));
+                                    state.store(ui.ctx(), r.id);
+                                }
+                            }
                             self.focus_text = false;
                         }
-                        if ui.input(|i| i.key_pressed(Key::Escape) || (i.modifiers.command && i.key_pressed(Key::Enter))) {
+                        if ui.input(|i| i.key_pressed(Key::Escape) || (i.modifiers.command && i.key_pressed(Key::Enter)) || (single && i.key_pressed(Key::Enter))) {
                             done = true;
                         }
                         if r.lost_focus() && !ui.input(|i| i.key_pressed(Key::Tab)) {
@@ -1371,6 +1490,13 @@ impl Editor {
             });
         if let Kind::Text(t) | Kind::Bubble(t) = &mut self.shapes[idx].kind {
             *t = self.text_buf.clone();
+        } else {
+            // Aperçu en direct du numéro ou du tampon.
+            let text = self.text_buf.clone();
+            self.apply_inline_value(idx, &text);
+        }
+        if self.text_buf != before {
+            self.dirty = true;
         }
         if done {
             self.commit_text();

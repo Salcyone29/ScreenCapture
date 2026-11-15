@@ -308,6 +308,11 @@ impl Shape {
         matches!(self.kind, Kind::Text(_) | Kind::Bubble(_))
     }
 
+    /// Formes dont le contenu se modifie par double-clic (texte, bulle, numéro, tampon).
+    pub fn is_editable(&self) -> bool {
+        matches!(self.kind, Kind::Text(_) | Kind::Bubble(_) | Kind::Number(..) | Kind::Stamp(_))
+    }
+
     pub fn hit(&self, p: Pos2, tol: f32) -> bool {
         let tol = tol + self.style.width / 2.0;
         match &self.kind {

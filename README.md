@@ -1,6 +1,6 @@
 # ScreenCapture
 
-Outil de capture d'écran, d'annotation et d'enregistrement vidéo écrit en Rust (eframe/egui), avec une interface Material Design 3 en français.
+Outil de capture d'écran, d'annotation et d'enregistrement vidéo écrit en Rust (eframe/egui), avec une interface Material Design 3 en français, anglais, espagnol et allemand.
 
 ## Fonctionnalités
 
@@ -9,11 +9,18 @@ Outil de capture d'écran, d'annotation et d'enregistrement vidéo écrit en Rus
 - Éditeur : flèches, formes, texte, bulles, surligneur, flou, loupe, numérotation (1, 01, A, a, I, i, α), tampons, recadrage, découpe de bande (droite ou zigzag), déplacement de zone, pipette, nuancier personnalisable
 - Reconnaissance de texte (OCR)
 - Enregistrement vidéo MP4 / WebM / GIF via FFmpeg, avec micro
-- Historique des captures, raccourcis globaux, icône dans la zone de notification
+- Historique des captures (sélection multiple par case, épinglage, conservation automatique), raccourcis globaux, icône dans la zone de notification
+- Éditeur : duplication des formes (Ctrl+D), modification d'un texte, numéro ou tampon par double-clic, tampon personnalisé
+- Aide intégrée (touche F1) dans les quatre langues
+- Mise à jour intégrée : bandeau quand une nouvelle version est publiée, installation en un clic
 
 ## Windows
 
 Télécharger l'installeur `ScreenCapture-Setup-x.y.z.exe` dans les [Releases](../../releases). Il propose d'installer FFmpeg s'il est absent.
+
+**Version portable** : `ScreenCapture-x.y.z-portable.zip`, à décompresser et lancer sans installation (clé USB…). Le fichier `ScreenCapture.portable` à côté du programme indique ce mode : réglages et journal dans le dossier `data` voisin.
+
+**Mises à jour** : l'application consulte la dernière version publiée sur GitHub (au démarrage puis une fois par jour, désactivable dans les Paramètres). Le fichier téléchargé est vérifié avec l'empreinte SHA-256 publiée par GitHub, puis installé (installeur silencieux, ou remplacement du programme pour la version portable).
 
 ### Compiler
 
@@ -21,7 +28,7 @@ Prérequis : [Rust](https://rustup.rs) et, pour l'installeur, [Inno Setup 6](htt
 
 ```powershell
 cargo build --release          # target\release\ScreenCapture.exe
-.\build-installer.ps1          # dist\ScreenCapture-Setup-x.y.z.exe
+.\build-installer.ps1          # dist\ScreenCapture-Setup-x.y.z.exe et dist\ScreenCapture-x.y.z-portable.zip
 ```
 
 ## macOS
@@ -73,3 +80,12 @@ Le workflow GitHub Actions `Build` compile l'installeur Windows et le `.dmg` mac
 ScreenCapture est un logiciel libre, distribué sous licence **GNU GPL version 3 ou ultérieure** (fichier [`LICENSE`](LICENSE)) : chacun peut l'utiliser, l'étudier, le modifier et le redistribuer, à condition que toute version redistribuée reste sous la même licence, avec son code source. Il est fourni sans aucune garantie.
 
 Les bibliothèques utilisées ont leurs propres licences (MIT, Apache-2.0, BSD, Zlib…), toutes compatibles avec la GPL-3.0 ; leurs mentions sont réunies dans [`THIRD-PARTY-LICENSES.txt`](THIRD-PARTY-LICENSES.txt), joint à l'installeur, au `.dmg` et consultable depuis la page « À propos ». Après un changement de dépendances, le régénérer avec `python tools/third_party_licenses.py`. FFmpeg, installé à part pour la vidéo, reste sous sa propre licence (GPL / LGPL).
+
+## Aide et captures d'écran
+
+Le texte de l'aide intégrée est dans `help/<langue>.md` et ses captures d'écran dans `help/img/<langue>/`. Elles sont produites par le scénario H1 de la campagne de validation, avec des images de démonstration, un fond plein écran générique et un dossier de captures neutre (rien de la machine qui les génère) :
+
+```powershell
+cargo build --release --examples
+cargo run --release --example validate -- tests\validation\aide H1
+```

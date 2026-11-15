@@ -29,6 +29,10 @@ pub fn log_dir() -> PathBuf {
     #[cfg(target_os = "macos")]
     let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")).join("Library").join("Logs").join("ScreenCapture");
     #[cfg(not(target_os = "macos"))]
+    if let Some(data) = crate::update::portable_data_dir() {
+        return data.join("logs");
+    }
+    #[cfg(not(target_os = "macos"))]
     let base = dirs::data_local_dir().unwrap_or_else(std::env::temp_dir).join("ScreenCapture").join("logs");
     base
 }

@@ -51,6 +51,10 @@ pub enum AppEvent {
     CancelCapture,
     /// Nettoyage de conservation terminé (nombre, octets, erreurs, lancé à la main).
     RetentionDone { n: usize, bytes: u64, errors: Vec<String>, manual: bool },
+    /// Recherche de mise à jour terminée (`manual` : demandée depuis les Paramètres).
+    UpdateChecked { result: Result<Option<crate::update::Release>, String>, manual: bool },
+    /// Téléchargement de la mise à jour terminé : fichier prêt, ou erreur.
+    UpdateDownloaded(Result<PathBuf, String>),
 }
 
 /// Contenu de la fenêtre principale.
@@ -190,6 +194,7 @@ const POPUP_DELAY: Duration = Duration::from_secs(6);
 enum Page {
     Home,
     Settings,
+    Help,
     About,
 }
 
@@ -289,6 +294,7 @@ pub struct App {
     page: Page,
     settings: Settings,
     workspace: Workspace,
+    help: crate::help::Help,
     editor: Option<Editor>,
     overlay: Option<Overlay>,
     recorder: Option<Recorder>,
@@ -303,6 +309,13 @@ pub struct App {
     ocr_text: Option<String>,
     /// Texte de licence affiché (page À propos) : titre et lignes.
     license_view: Option<(&'static str, Vec<&'static str>)>,
+    /// Nouvelle version disponible (bandeau en haut de la fenêtre), masquée par « Plus tard ».
+    update: Option<crate::update::Release>,
+    update_hidden: bool,
+    /// Téléchargement ou installation en cours.
+    update_busy: bool,
+    update_checking: bool,
+    next_update_check: Instant,
     busy: bool,
     /// Début de la capture en cours, pour ne jamais rester bloqué en « occupé ».
     busy_since: Instant,
@@ -476,6 +489,7 @@ impl App {
             recbar_rect: Rect::new(0, 0, 1, 1),
             page: Page::Home,
             workspace: Workspace::new(&ctx),
+            help: crate::help::Help::default(),
             settings,
             editor: None,
             overlay: None,
@@ -490,6 +504,12 @@ impl App {
             snackbar: None,
             ocr_text: None,
             license_view: None,
+            update: None,
+            update_hidden: false,
+            update_busy: false,
+            update_checking: false,
+            // Première recherche peu après le démarrage.
+            next_update_check: Instant::now() + Duration::from_secs(8),
             busy: false,
             busy_since: Instant::now(),
             capture_cancelled: false,
@@ -557,7 +577,7 @@ impl App {
             self.overlay_win.win.map(|w| format!("{} bandeau={} zone={:?}", w.describe(), self.overlay.as_ref().map(|o| o.help_position).unwrap_or("-"), self.overlay.as_ref().and_then(|o| o.current))),
             self.popup_win.win.map(|w| w.describe()),
             self.recbar_win.win.map(|w| w.describe()),
-        )
+        ) + &self.editor.as_ref().map(|e| format!(" | éditeur {}", e.summary())).unwrap_or_default()
     }
 
     // ------------------------------------------------------------------ capture
@@ -1011,6 +1031,34 @@ impl App {
                     }
                 }
                 AppEvent::Shortcut(k) => self.shortcut(k, ctx),
+                AppEvent::UpdateChecked { result, manual } => {
+                    self.update_checking = false;
+                    match result {
+                        Ok(Some(r)) => {
+                            if self.update.as_ref().map(|u| &u.version) != Some(&r.version) {
+                                self.update_hidden = false;
+                            }
+                            self.update = Some(r);
+                        }
+                        Ok(None) if manual => self.toast(crate::i18n::trf("ScreenCapture est à jour (version {0})", &[&env!("CARGO_PKG_VERSION")])),
+                        Err(e) if manual => self.toast(crate::i18n::trf("Recherche de mise à jour impossible : {0}", &[&e])),
+                        _ => {}
+                    }
+                }
+                AppEvent::UpdateDownloaded(result) => match result.map_err(|e| e.to_string()).and_then(|f| crate::update::install(&f).map_err(|e| e.to_string())) {
+                    Ok(true) => {
+                        crate::diag::log("mise à jour : installation lancée, fermeture");
+                        self.request_quit(ctx);
+                    }
+                    Ok(false) => {
+                        self.update_busy = false;
+                        self.toast(crate::i18n::tr("Image disque ouverte : glissez ScreenCapture dans Applications."));
+                    }
+                    Err(e) => {
+                        self.update_busy = false;
+                        self.toast(crate::i18n::trf("Mise à jour impossible : {0}", &[&e]));
+                    }
+                },
                 AppEvent::Menu(id) => match self.menu_ids.get(&id).copied() {
                     Some("region") => self.start_capture(CaptureKind::Region, ctx, false),
                     Some("full") => self.start_capture(CaptureKind::Fullscreen, ctx, false),
@@ -1169,16 +1217,19 @@ impl App {
                     ));
                 }
             }
-            "home" | "settings" | "about" => {
+            "home" | "settings" | "about" | "help" => {
                 self.close_editor(true);
                 self.mode = Mode::Workspace;
                 self.page = match c {
                     "settings" => Page::Settings,
                     "about" => Page::About,
+                    "help" => Page::Help,
                     _ => Page::Home,
                 };
                 self.open_from_outside();
             }
+            "update-check" => self.check_update(ctx, true),
+            "update-install" => self.start_update(ctx),
             "state" => {}
             "quit" => self.request_quit(ctx),
             other => crate::diag::log(&format!("commande inconnue « {other} »")),
@@ -1195,6 +1246,78 @@ impl App {
         }
         self.last_shortcut = Some((k, Instant::now()));
         self.start_capture(k, ctx, true);
+    }
+
+    /// Recherche une nouvelle version en arrière-plan.
+    fn check_update(&mut self, ctx: &egui::Context, manual: bool) {
+        if self.update_checking {
+            return;
+        }
+        self.update_checking = true;
+        self.next_update_check = Instant::now() + Duration::from_secs(24 * 3600);
+        let tx = self.tx.clone();
+        let ctx = ctx.clone();
+        std::thread::spawn(move || {
+            let result = crate::update::check().map_err(|e| e.to_string());
+            let _ = tx.send(AppEvent::UpdateChecked { result, manual });
+            ctx.request_repaint();
+        });
+    }
+
+    /// Télécharge puis installe la nouvelle version (bouton du bandeau).
+    fn start_update(&mut self, ctx: &egui::Context) {
+        let Some(r) = self.update.clone() else { return };
+        if self.update_busy {
+            return;
+        }
+        self.update_busy = true;
+        let tx = self.tx.clone();
+        let ctx = ctx.clone();
+        std::thread::spawn(move || {
+            let result = crate::update::download(&r).map_err(|e| e.to_string());
+            let _ = tx.send(AppEvent::UpdateDownloaded(result));
+            ctx.request_repaint();
+        });
+    }
+
+    /// Bandeau « nouvelle version disponible » en haut de la fenêtre.
+    fn update_banner(&mut self, ctx: &egui::Context) {
+        let Some(r) = self.update.clone() else { return };
+        if self.update_hidden {
+            return;
+        }
+        let p = palette(ctx);
+        let mut update = false;
+        egui::TopBottomPanel::top("update_banner")
+            .frame(egui::Frame::new().fill(p.primary_container).inner_margin(Margin::symmetric(16, 8)))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(ICON_NEW_RELEASES).size(20.0).color(p.on_primary_container));
+                    ui.label(
+                        egui::RichText::new(crate::i18n::trf("ScreenCapture {0} est disponible (version actuelle : {1}).", &[&r.version, &env!("CARGO_PKG_VERSION")]))
+                            .font(theme::medium(14.0))
+                            .color(p.on_primary_container),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if theme::icon_button(ui, ICON_CLOSE, false, crate::i18n::tr("Plus tard")).clicked() {
+                            self.update_hidden = true;
+                        }
+                        if !r.page.is_empty() && theme::button(ui, ButtonKind::Text, None, crate::i18n::tr("Nouveautés")).clicked() {
+                            ui.ctx().open_url(egui::OpenUrl::new_tab(r.page.clone()));
+                        }
+                        if self.update_busy {
+                            ui.spinner();
+                            ui.label(egui::RichText::new(crate::i18n::tr("Téléchargement…")).color(p.on_primary_container));
+                        } else {
+                            let label = if cfg!(target_os = "macos") { crate::i18n::tr("Télécharger") } else { crate::i18n::tr("Mettre à jour") };
+                            update = theme::button(ui, ButtonKind::Filled, Some(ICON_SYSTEM_UPDATE_ALT), label).clicked();
+                        }
+                    });
+                });
+            });
+        if update {
+            self.start_update(ctx);
+        }
     }
 
     fn request_quit(&mut self, ctx: &egui::Context) {
@@ -1244,7 +1367,7 @@ impl App {
                         self.start_capture(CaptureKind::Region, ctx, false);
                     }
                     ui.add_space(20.0);
-                    for (page, icon, label) in [(Page::Home, ICON_HOME, crate::i18n::tr("Accueil")), (Page::Settings, ICON_SETTINGS, crate::i18n::tr("Paramètres")), (Page::About, ICON_INFO, crate::i18n::tr("À propos"))] {
+                    for (page, icon, label) in [(Page::Home, ICON_HOME, crate::i18n::tr("Accueil")), (Page::Settings, ICON_SETTINGS, crate::i18n::tr("Paramètres")), (Page::Help, ICON_HELP, crate::i18n::tr("Aide")), (Page::About, ICON_INFO, crate::i18n::tr("À propos"))] {
                         if theme::nav_item(ui, icon, label, self.page == page).clicked() {
                             self.page = page;
                         }
@@ -1268,6 +1391,7 @@ impl App {
         let p = palette(ctx);
         let mut changed = false;
         let mut refresh_tray = false;
+        let mut check_now = false;
         egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
             ui.set_max_width(820.0);
             ui.add_space(8.0);
@@ -1508,6 +1632,26 @@ impl App {
             });
             ui.add_space(12.0);
 
+            theme::card(ui, crate::i18n::tr("Mises à jour"), ICON_SYSTEM_UPDATE, |ui| {
+                theme::setting_row(
+                    ui,
+                    crate::i18n::tr("Rechercher les mises à jour"),
+                    crate::i18n::tr("Au démarrage puis une fois par jour, sur la page des versions GitHub de ScreenCapture"),
+                    |ui| {
+                        changed |= theme::switch(ui, &mut self.settings.check_updates).changed();
+                    },
+                );
+                let mode = if crate::update::portable_dir().is_some() { crate::i18n::tr("version portable") } else if cfg!(target_os = "macos") { "macOS" } else { crate::i18n::tr("version installée") };
+                theme::setting_row(ui, &crate::i18n::trf("Version {0}", &[&env!("CARGO_PKG_VERSION")]), mode, |ui| {
+                    if self.update_checking {
+                        ui.spinner();
+                    } else if theme::button(ui, ButtonKind::Tonal, Some(ICON_UPDATE), crate::i18n::tr("Rechercher maintenant")).clicked() {
+                        check_now = true;
+                    }
+                });
+            });
+            ui.add_space(12.0);
+
             theme::card(ui, crate::i18n::tr("Apparence et démarrage"), ICON_PALETTE, |ui| {
                 theme::setting_row(ui, crate::i18n::tr("Langue"), "", |ui| {
                     for l in crate::i18n::Language::ALL {
@@ -1548,6 +1692,9 @@ impl App {
         });
         if refresh_tray {
             self.refresh_tray();
+        }
+        if check_now {
+            self.check_update(ctx, true);
         }
         if changed {
             self.settings.save();
@@ -2264,6 +2411,15 @@ impl eframe::App for App {
         self.capture_popup_viewport(ctx);
         self.recording_bar_viewport(ctx);
 
+        // Mises à jour : recherche au démarrage puis une fois par jour ; bandeau si disponible.
+        if self.settings.check_updates && Instant::now() >= self.next_update_check {
+            self.check_update(ctx, false);
+        }
+        if self.settings.check_updates {
+            ctx.request_repaint_after(self.next_update_check.saturating_duration_since(Instant::now()));
+        }
+        self.update_banner(ctx);
+
         crate::diag::step(match self.mode {
             Mode::Editor => "interface : éditeur",
             Mode::Workspace => "interface : espace de travail",
@@ -2294,6 +2450,9 @@ impl eframe::App for App {
                 if !dropped.is_empty() {
                     self.import_files(&dropped);
                 }
+                if ctx.input(|i| i.key_pressed(egui::Key::F1)) {
+                    self.page = Page::Help;
+                }
                 self.nav_rail(ctx);
                 let p = palette(ctx);
                 let mut ws_actions = Vec::new();
@@ -2305,6 +2464,7 @@ impl eframe::App for App {
                             ws_actions = self.workspace.ui(ui, &self.settings, &status);
                         }
                         Page::Settings => self.settings_page(ui, ctx),
+                        Page::Help => self.help.ui(ui),
                         Page::About => self.about_page(ui, ctx),
                     });
                 self.workspace_actions(ctx, ws_actions);

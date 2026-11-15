@@ -140,11 +140,15 @@ pub struct Settings {
     pub pinned: Vec<String>,
     /// Langue de l'interface.
     pub language: crate::i18n::Language,
+    /// Rechercher les nouvelles versions sur GitHub (au démarrage, puis une fois par jour).
+    pub check_updates: bool,
     pub effect_border: bool,
     pub effect_border_width: u32,
     pub effect_border_color: [u8; 4],
     pub effect_shadow: bool,
     pub number_format: NumberFormat,
+    /// Texte du tampon personnalisé de l'éditeur.
+    pub custom_stamp: String,
     /// Journal de diagnostic (activé par un triple-clic sur la version, page « À propos »).
     pub diagnostic: bool,
     /// Nuancier de l'éditeur, modifiable dans les Paramètres.
@@ -185,11 +189,13 @@ impl Default for Settings {
             retention_to_trash: true,
             pinned: Vec::new(),
             language: crate::i18n::Language::System,
+            check_updates: true,
             effect_border: false,
             effect_border_width: 2,
             effect_border_color: [80, 80, 80, 255],
             effect_shadow: false,
             number_format: NumberFormat::Decimal,
+            custom_stamp: String::new(),
             diagnostic: false,
             palette: COLORS.to_vec(),
         }
@@ -197,6 +203,9 @@ impl Default for Settings {
 }
 
 fn config_path() -> PathBuf {
+    if let Some(data) = crate::update::portable_data_dir() {
+        return data.join("settings.json");
+    }
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("ScreenCapture")

@@ -2,6 +2,7 @@
  (dont {0} pour la taille maximale)	 (davon {0} wegen der Maximalgröße)
  (taille maximale dépassée)	 (Maximalgröße überschritten)
 1 an	1 Jahr
+1 capture sélectionnée	1 Aufnahme ausgewählt
 1 image ajoutée au dossier des captures	1 Bild zum Aufnahmeordner hinzugefügt
 30 jours	30 Tage
 7 jours	7 Tage
@@ -17,7 +18,9 @@ Affiche les pixels agrandis et la couleur sous le curseur pendant la sélection	
 Afficher dans l'Explorateur	Im Explorer anzeigen
 Afficher dans le Finder	Im Finder anzeigen
 Afficher le cadre d'enregistrement	Aufnahmerahmen anzeigen
+Aide	Hilfe
 Ajouter une couleur	Farbe hinzufügen
+Ajouter à la sélection	Zur Auswahl hinzufügen
 Ajuster à la fenêtre (Ctrl+0)	An Fenster anpassen (Strg+0)
 Alt	Alt
 Annuler	Abbrechen
@@ -35,6 +38,7 @@ Arrière-plan	In den Hintergrund
 Arrêter	Stoppen
 Astuce : si Impr. écran ouvre l'Outil Capture de Windows, désactivez « Utiliser la touche Impr. écran pour ouvrir la capture d'écran » dans Paramètres Windows > Accessibilité > Clavier.	Tipp: Wenn die Druck-Taste das Windows-Snipping-Tool öffnet, deaktivieren Sie „Druck-Taste zum Öffnen der Bildschirmaufnahme verwenden“ unter Windows-Einstellungen > Barrierefreiheit > Tastatur.
 Astuce : ⌘⇧3, ⌘⇧4 et ⌘⇧5 sont réservés par macOS (Réglages Système > Clavier > Raccourcis clavier > Captures d'écran).	Tipp: ⌘⇧3, ⌘⇧4 und ⌘⇧5 sind von macOS reserviert (Systemeinstellungen > Tastatur > Tastaturkurzbefehle > Bildschirmfotos).
+Au démarrage puis une fois par jour, sur la page des versions GitHub de ScreenCapture	Beim Start und danach einmal täglich, auf der GitHub-Versionsseite von ScreenCapture
 Au-delà, les captures les plus anciennes sont supprimées	Darüber hinaus werden die ältesten Aufnahmen gelöscht
 Aucun	Keines
 Aucun micro branché ou activé dans Windows • non disponible en GIF	Kein Mikrofon angeschlossen oder in Windows aktiviert • nicht verfügbar für GIF
@@ -70,12 +74,14 @@ Choisir	Auswählen
 Choix par défaut ; modifiable au moment de choisir la zone (touche M)	Standardauswahl; beim Auswählen des Bereichs änderbar (Taste M)
 Clair	Hell
 Clic : modifier  •  clic droit : retirer  •  + : ajouter	Klick: bearbeiten  •  Rechtsklick: entfernen  •  +: hinzufügen
+Cliquer dans le champ pour utiliser ce tampon ; double-cliquer sur un tampon posé pour modifier son texte.	In das Feld klicken, um diesen Stempel zu verwenden; Doppelklick auf einen gesetzten Stempel ändert seinen Text.
 Cliquer pour apposer le tampon	Klicken, um den Stempel zu setzen
 Cliquer pour placer le numéro suivant	Klicken, um die nächste Nummer zu setzen
 Cliquer pour prélever une couleur	Klicken, um eine Farbe aufzunehmen
 Cliquer pour sélectionner • Glisser pour déplacer • Suppr pour effacer	Klicken zum Auswählen • Ziehen zum Verschieben • Entf zum Löschen
 Cliquer pour écrire • Ctrl+Entrée ou Échap pour valider	Klicken zum Schreiben • Strg+Eingabe oder Esc zum Bestätigen
 Cliquer pour écrire • ⌘Entrée ou Échap pour valider	Klicken zum Schreiben • ⌘Return oder Esc zum Bestätigen
+Cliquer sur la case ronde d'une vignette pour sélectionner plusieurs captures.	Klicken Sie auf das runde Kästchen einer Miniatur, um mehrere Aufnahmen auszuwählen.
 Code source	Quellcode
 Coller l'image du presse-papiers dans le dossier des captures (Ctrl+V)	Bild aus der Zwischenablage in den Aufnahmeordner einfügen (Strg+V)
 Composants tiers	Komponenten von Drittanbietern
@@ -104,6 +110,7 @@ Diagnostic	Diagnose
 Différée	Verzögert
 Dossier des captures	Aufnahmeordner
 Droit	Gerade
+Dupliquer (Ctrl+D)	Duplizieren (Strg+D)
 Découpe	Schnitt
 Découper	Schneiden
 Découper une bande (X)	Streifen herausschneiden (X)
@@ -115,6 +122,7 @@ Déplacer une zone (D)	Bereich verschieben (D)
 Déplacer à droite	Nach rechts verschieben
 Déplacer à gauche	Nach links verschieben
 Désactivé	Aus
+Désélectionner (Échap)	Auswahl aufheben (Esc)
 Désépingler	Lösen
 Effets à l'export	Exporteffekte
 Ellipse (E)	Ellipse (E)
@@ -156,6 +164,7 @@ Format	Format
 Format d'image	Bildformat
 Forme sélectionnée	Ausgewählte Form
 GetDIBits a échoué	GetDIBits fehlgeschlagen
+GitHub limite les recherches pour le moment, réessayez plus tard	GitHub begrenzt die Abfragen derzeit, versuchen Sie es später erneut
 Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler	Ziehen: Bereich  •  Klick: Fenster  •  Eingabe: Vollbild  •  C: Farbe kopieren  •  Esc: abbrechen
 Glisser ou double-cliquer pour saisir (ex. 5, e, IV)	Ziehen oder doppelklicken zum Eingeben (z. B. 5, e, IV)
 Glisser pour choisir la bande à retirer	Ziehen, um den zu entfernenden Streifen zu wählen
@@ -174,6 +183,7 @@ Image JPEG	JPEG-Bild
 Image PNG	PNG-Bild
 Image collée : {0}	Bild eingefügt: {0}
 Image copiée dans le presse-papiers	Bild in die Zwischenablage kopiert
+Image disque ouverte : glissez ScreenCapture dans Applications.	Disk-Image geöffnet: Ziehen Sie ScreenCapture in „Programme“.
 Images	Bilder
 Images par seconde	Bilder pro Sekunde
 Impossible d'ouvrir l'image : {0}	Bild kann nicht geöffnet werden: {0}
@@ -198,15 +208,20 @@ Loupe (M)	Lupe (M)
 Loupe de précision	Präzisionslupe
 Main levée (P)	Freihand (P)
 Maj	Umschalt
+Mettre à jour	Aktualisieren
 Micro « {0} » introuvable : enregistrement sans le son	Mikrofon „{0}“ nicht gefunden: Aufnahme ohne Ton
 Microphone	Mikrofon
 Miniature	Miniatur
+Mise à jour impossible : {0}	Aktualisierung nicht möglich: {0}
+Mises à jour	Updates
 Mode de suppression	Löschmodus
 Modifications enregistrées	Änderungen gespeichert
+Modifier le contenu (double-clic)	Inhalt ändern (Doppelklick)
 NOUVEAU	NEU
 Nettoyer maintenant	Jetzt aufräumen
 Non disponible pour le format GIF	Für das GIF-Format nicht verfügbar
 Non enregistré (déjà utilisé par une autre application, ou syntaxe invalide)	Nicht registriert (bereits von einer anderen Anwendung verwendet oder ungültige Syntax)
+Nouveautés	Neuerungen
 Nouvelle capture	Neue Aufnahme
 Nouvelle taille : {0} × {1} px	Neue Größe: {0} × {1} px
 Nuancier des styles	Stilpalette
@@ -231,6 +246,7 @@ Pivoter à gauche	Nach links drehen
 Plein écran	Vollbild
 Plein écran multi-moniteurs, fenêtre active, dernière zone, capture différée	Vollbild über mehrere Monitore, aktives Fenster, letzter Bereich, verzögerte Aufnahme
 Plein écran\t{0}	Vollbild\t{0}
+Plus tard	Später
 Pointillés	Gestrichelt
 Premier plan	In den Vordergrund
 Presse-papiers indisponible	Zwischenablage nicht verfügbar
@@ -243,6 +259,9 @@ REFUSÉ	ABGELEHNT
 Raccord	Naht
 Raccourcis clavier globaux	Globale Tastenkürzel
 Raccourcis clavier globaux configurables, icône de notification	Konfigurierbare globale Tastenkürzel, Infobereichssymbol
+Recherche de mise à jour impossible : {0}	Suche nach Updates nicht möglich: {0}
+Rechercher les mises à jour	Nach Updates suchen
+Rechercher maintenant	Jetzt suchen
 Rechercher…	Suchen…
 Reconnaissance du texte…	Text wird erkannt…
 Rectangle (R)	Rechteck (R)
@@ -255,6 +274,7 @@ Renumérote les pastilles dans l'ordre de création, à partir de 1	Nummeriert d
 Renuméroter dans l'ordre	Der Reihe nach neu nummerieren
 Retire une bande de l'image et recolle les deux morceaux.	Entfernt einen Streifen aus dem Bild und fügt die beiden Teile wieder zusammen.
 Retirer cette couleur	Diese Farbe entfernen
+Retirer de la sélection	Aus der Auswahl entfernen
 Retour à l'espace de travail	Zurück zum Arbeitsbereich
 Rien	Nichts
 Rien à supprimer pour l'instant. Vérification au démarrage puis toutes les heures.	Derzeit nichts zu löschen. Prüfung beim Start und danach stündlich.
@@ -267,6 +287,8 @@ Sans le son  •  M pour l'activer	Ohne Ton  •  M zum Aktivieren
 Sans le son  •  aucun micro choisi dans les Paramètres	Ohne Ton  •  kein Mikrofon in den Einstellungen gewählt
 Sans le son : aucun micro choisi dans les Paramètres (ou GIF)	Ohne Ton: kein Mikrofon in den Einstellungen gewählt (oder GIF)
 ScreenCapture est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence GNU GPL, version 3 ou ultérieure. Il est fourni sans aucune garantie.	ScreenCapture ist freie Software: Sie können es unter den Bedingungen der GNU GPL, Version 3 oder neuer, weitergeben und verändern. Es wird ohne jede Gewährleistung bereitgestellt.
+ScreenCapture est à jour (version {0})	ScreenCapture ist aktuell (Version {0})
+ScreenCapture {0} est disponible (version actuelle : {1}).	ScreenCapture {0} ist verfügbar (aktuelle Version: {1}).
 ScreenCapture — {0} pour capturer	ScreenCapture — {0} zum Aufnehmen
 Seuls les fichiers créés par ScreenCapture (Capture_…, Video_…, Collage_…) sont concernés. Les captures épinglées ({0} sur une vignette) et celle ouverte dans l'éditeur ne sont jamais supprimées. L'âge se compte depuis la création du fichier.	Nur von ScreenCapture erstellte Dateien (Capture_…, Video_…, Collage_…) sind betroffen. Angeheftete Aufnahmen ({0} auf einer Miniatur) und die im Editor geöffnete werden nie gelöscht. Das Alter zählt ab der Erstellung der Datei.
 Sombre	Dunkel
@@ -287,38 +309,55 @@ Sélectionnez une zone de l'image puis faites-la glisser. L'emplacement d'origin
 Taille du texte	Textgröße
 Taille maximale du dossier	Maximale Ordnergröße
 Tampon (S)	Stempel (S)
+Tampon personnalisé	Eigener Stempel
 Tampons	Stempel
 Texte (T)	Text (T)
 Texte extrait	Erkannter Text
 Thème	Design
 Tout	Alle
+Tout sélectionner (Ctrl+A)	Alle auswählen (Strg+A)
 Transparent	Transparent
+Téléchargement…	Wird heruntergeladen…
+Télécharger	Herunterladen
 Utilisé : {0}	Belegt: {0}
 VALIDÉ	GEPRÜFT
 Valeur	Wert
 Valeurs par défaut	Standardwerte
+Version {0}	Version {0}
 Version {0}  •  Rust + egui  •  Material Design 3	Version {0}  •  Rust + egui  •  Material Design 3
 Verticale	Vertikal
 Vidéo	Video
 Vidéo (démarrer / arrêter)	Video (starten / stoppen)
 Vidéo enregistrée : {0}	Video gespeichert: {0}
 Vidéos	Videos
+Votre texte…	Ihr Text…
 Win	Win
 Zigzag	Zickzack
 Zone	Bereich
 Zoom arrière	Verkleinern
 Zoom avant	Vergrößern
+archive illisible	Archiv nicht lesbar
 aucun écran	kein Bildschirm
+aucune version publiée n'est accessible pour l'instant	noch keine veröffentlichte Version verfügbar
+connexion sécurisée à GitHub impossible	keine sichere Verbindung zu GitHub möglich
 conversion GIF échouée	GIF-Umwandlung fehlgeschlagen
+empreinte du fichier téléchargé incorrecte	Fingerabdruck der heruntergeladenen Datei falsch
 envoyée(s) dans la Corbeille	in den Papierkorb verschoben
 envoyées dans la Corbeille	in den Papierkorb verschoben
 erreur interne pendant la capture	interner Fehler während der Aufnahme
+fichier téléchargé incomplet	Download unvollständig
 format d'image inattendu	unerwartetes Bildformat
 i, ii, iii	i, ii, iii
+le serveur de GitHub a répondu par une erreur	der GitHub-Server hat einen Fehler gemeldet
+pas de connexion à Internet	keine Internetverbindung
+réponse inattendue de GitHub	unerwartete Antwort von GitHub
 suppression impossible (code {0})	Löschen nicht möglich (Code {0})
 suppression impossible : {0}	Löschen nicht möglich: {0}
 supprimée(s)	gelöscht
 supprimées définitivement	endgültig gelöscht
+téléchargement impossible	Download nicht möglich
+version installée	installierte Version
+version portable	portable Version
 zone hors de l'écran	Bereich außerhalb des Bildschirms
 zone trop petite pour une vidéo	Bereich zu klein für ein Video
 zone vide	leerer Bereich
@@ -337,6 +376,7 @@ zone vide	leerer Bereich
 {0} captures ({1})	{0} Aufnahmen ({1})
 {0} captures désépinglées	{0} Aufnahmen gelöst
 {0} captures envoyées dans la Corbeille	{0} Aufnahmen in den Papierkorb verschoben
+{0} captures sélectionnées	{0} Aufnahmen ausgewählt
 {0} captures épinglées	{0} Aufnahmen angeheftet
 {0} images ajoutées au dossier des captures	{0} Bilder zum Aufnahmeordner hinzugefügt
 {0} px retirés	{0} px entfernt
@@ -354,5 +394,5 @@ zone vide	leerer Bereich
 Éditeur	Editor
 Éditeur : flèches, formes, surligneur, flou, texte, bulles, numéros, loupe, tampons, rognage, rotation	Editor: Pfeile, Formen, Textmarker, Weichzeichner, Text, Sprechblasen, Nummern, Lupe, Stempel, Zuschnitt, Drehung
 Épaisseur	Stärke
+Épingler	Anheften
 Épingler : jamais supprimée automatiquement	Anheften: wird nie automatisch gelöscht
-•  {0} sélectionnées  •  Suppr pour les supprimer	•  {0} ausgewählt  •  Entf zum Löschen

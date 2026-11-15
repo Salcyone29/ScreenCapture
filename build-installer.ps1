@@ -21,3 +21,20 @@ if (-not $iscc) { throw "Inno Setup 6 introuvable (winget install JRSoftware.Inn
 & $iscc /Qp "/DAppVersion=$version" installer\ScreenCapture.iss
 if ($LASTEXITCODE) { throw "Échec de la compilation de l'installeur" }
 Get-Item "dist\ScreenCapture-Setup-$version.exe"
+
+# Version portable : programme + marqueur ScreenCapture.portable (réglages dans .\data).
+$stage = "dist\portable\ScreenCapture"
+Remove-Item -Recurse -Force dist\portable -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force $stage | Out-Null
+Copy-Item target\release\ScreenCapture.exe $stage
+Copy-Item LICENSE "$stage\LICENSE.txt"
+Copy-Item THIRD-PARTY-LICENSES.txt $stage
+Set-Content -Path "$stage\ScreenCapture.portable" -Encoding utf8 -Value @(
+    "Version portable de ScreenCapture : les réglages et le journal sont enregistrés dans le dossier « data » à côté du programme.",
+    "Supprimer ce fichier pour utiliser les réglages de l'utilisateur Windows."
+)
+$zip = "dist\ScreenCapture-$version-portable.zip"
+Remove-Item $zip -ErrorAction SilentlyContinue
+Compress-Archive -Path $stage -DestinationPath $zip
+Remove-Item -Recurse -Force dist\portable
+Get-Item $zip

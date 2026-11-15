@@ -2,7 +2,7 @@
 ; Compilé par build-installer.ps1, qui fournit AppVersion depuis Cargo.toml.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.12"
+  #define AppVersion "0.1.13"
 #endif
 #define AppName "ScreenCapture"
 #define AppExe "ScreenCapture.exe"
@@ -100,11 +100,19 @@ Name: "{autostartup}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: startup
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; Mise à jour lancée par l'application (/update=1, installation silencieuse) : la relancer.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: IsUpdate
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\ffmpeg"
 
 [Code]
+{ Installation lancée par la mise à jour intégrée à l'application. }
+function IsUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:update|0}') = '1';
+end;
+
 var
   DownloadPage: TDownloadWizardPage;
   FfmpegReady: Boolean;

@@ -10,7 +10,7 @@ use egui_material_icons::icons::*;
 
 use crate::app::CaptureKind;
 use crate::settings::Settings;
-use crate::theme::{self, palette};
+use crate::theme::{self, palette, ButtonKind};
 
 pub const IMAGE_EXT: [&str; 5] = ["png", "jpg", "jpeg", "bmp", "gif"];
 const VIDEO_EXT: [&str; 3] = ["mp4", "webm", "mkv"];
@@ -61,6 +61,8 @@ pub struct Workspace {
     selected: Vec<PathBuf>,
     /// Point de départ d'une sélection par plage (Maj+clic).
     anchor: Option<PathBuf>,
+    /// Mode sélection (activé par la case d'une vignette) : un simple clic ajoute ou retire.
+    check_mode: bool,
     /// Captures visibles, dans l'ordre d'affichage (pour Maj+clic et Ctrl+A).
     visible_order: Vec<PathBuf>,
     /// Position des vignettes affichées (points, relatifs à la fenêtre), pour les tests.
@@ -96,6 +98,7 @@ impl Workspace {
             confirm_delete: None,
             selected: Vec::new(),
             anchor: None,
+            check_mode: false,
             visible_order: Vec::new(),
             card_rects: Vec::new(),
         }
@@ -207,9 +210,6 @@ impl Workspace {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new(crate::i18n::tr("Historique")).font(theme::medium(22.0)).color(p.on_surface));
                 ui.label(egui::RichText::new(if self.items.len() > 1 { crate::i18n::trf("{0} éléments", &[&self.items.len()]) } else { crate::i18n::trf("{0} élément", &[&self.items.len()]) }).color(p.on_surface_variant));
-                if self.selected.len() > 1 {
-                    ui.label(egui::RichText::new(crate::i18n::trf("•  {0} sélectionnées  •  Suppr pour les supprimer", &[&self.selected.len()])).color(p.primary));
-                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if theme::icon_button(ui, ICON_FOLDER_OPEN, false, crate::i18n::tr("Ouvrir le dossier des captures")).clicked() {
                         actions.push(WsAction::OpenFolder);
@@ -237,6 +237,19 @@ impl Workspace {
                 theme::text_field(ui, &mut self.search, 200.0, crate::i18n::tr("Rechercher…"));
             });
             ui.add_space(14.0);
+            // Hauteur toujours réservée : les vignettes ne bougent pas quand la sélection commence
+            // (sinon le clic suivant tomberait à côté).
+            let width = ui.available_width();
+            ui.allocate_ui_with_layout(vec2(width, 44.0), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.set_min_size(vec2(width, 44.0));
+                if self.selected.is_empty() {
+                    ui.label(egui::RichText::new(ICON_CHECK_CIRCLE).size(18.0).color(p.outline));
+                    ui.label(egui::RichText::new(crate::i18n::tr("Cliquer sur la case ronde d'une vignette pour sélectionner plusieurs captures.")).size(12.5).color(p.on_surface_variant));
+                } else {
+                    self.selection_bar(ui, settings, &mut actions);
+                }
+            });
+            ui.add_space(10.0);
 
             let q = self.search.to_lowercase();
             let visible: Vec<usize> = self
@@ -287,6 +300,7 @@ impl Workspace {
                 self.confirm_delete = Some(self.selected.clone());
             } else if esc {
                 self.selected.clear();
+                self.check_mode = false;
             } else if all {
                 self.selected = self.visible_order.clone();
             }
@@ -305,6 +319,40 @@ impl Workspace {
             }
         }
         actions
+    }
+
+    /// Bandeau affiché dès qu'une capture est sélectionnée : nombre, tout sélectionner,
+    /// épingler, supprimer, désélectionner.
+    fn selection_bar(&mut self, ui: &mut Ui, settings: &Settings, actions: &mut Vec<WsAction>) {
+        let p = palette(ui.ctx());
+        let n = self.selected.len();
+        egui::Frame::new()
+            .fill(p.secondary_container)
+            .corner_radius(egui::CornerRadius::same(24))
+            .inner_margin(egui::Margin::symmetric(8, 4))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    if theme::icon_button(ui, ICON_CLOSE, false, crate::i18n::tr("Désélectionner (Échap)")).clicked() {
+                        self.selected.clear();
+                        self.check_mode = false;
+                    }
+                    let label = if n > 1 { crate::i18n::trf("{0} captures sélectionnées", &[&n]) } else { crate::i18n::tr("1 capture sélectionnée").to_string() };
+                    ui.label(egui::RichText::new(label).font(theme::medium(14.0)).color(p.on_secondary_container));
+                    ui.add_space(12.0);
+                    if n < self.visible_order.len() && theme::button(ui, ButtonKind::Text, Some(ICON_SELECT_ALL), &crate::platform::sc(crate::i18n::tr("Tout sélectionner (Ctrl+A)"))).clicked() {
+                        self.selected = self.visible_order.clone();
+                        self.check_mode = true;
+                    }
+                    let all_pinned = self.selected.iter().all(|s| crate::retention::is_pinned(settings, s));
+                    let (icon, pin) = if all_pinned { (ICON_KEEP_OFF, crate::i18n::tr("Désépingler")) } else { (ICON_KEEP, crate::i18n::tr("Épingler")) };
+                    if theme::button(ui, ButtonKind::Text, Some(icon), pin).clicked() {
+                        actions.push(WsAction::TogglePin(self.selected.clone()));
+                    }
+                    if theme::button(ui, ButtonKind::Danger, Some(ICON_DELETE), crate::i18n::tr("Supprimer (Suppr)")).clicked() {
+                        self.confirm_delete = Some(self.selected.clone());
+                    }
+                });
+            });
     }
 
     pub fn selected_count(&self) -> usize {
@@ -367,9 +415,20 @@ impl Workspace {
             let _ = self.req_tx.send(path.clone());
         }
         self.card_rects.push((path.clone(), rect));
-        if resp.clicked() {
+        // Case de sélection (coin haut gauche) : visible au survol, et sur toutes les vignettes
+        // en mode sélection ; un clic dessus ajoute ou retire la capture sans touche Ctrl.
+        let check = Rect::from_center_size(rect.min + vec2(24.0, 24.0), vec2(30.0, 30.0));
+        let check_resp = ui.interact(check, ui.id().with(("card_check", i)), Sense::click());
+        let check_clicked = check_resp.clicked();
+        if check_clicked {
+            self.check_mode = true;
+            self.click_select(&path, true, false);
+        } else if resp.clicked() {
             let (ctrl, shift) = ui.input(|i| (i.modifiers.command, i.modifiers.shift));
-            self.click_select(&path, ctrl, shift);
+            self.click_select(&path, ctrl || (self.check_mode && !shift), shift);
+            if self.selected.is_empty() {
+                self.check_mode = false;
+            }
         } else if resp.secondary_clicked() && !self.selected.contains(&path) {
             // Clic droit hors de la sélection : sélectionner cette capture seule.
             self.click_select(&path, false, false);
@@ -419,6 +478,17 @@ impl Workspace {
             p.on_surface_variant,
         );
         let is_video = it.is_video;
+        if self.check_mode || hovered || selected || check_resp.hovered() {
+            let painter = ui.painter();
+            let c = check.center();
+            painter.circle_filled(c, 13.0, if selected { p.primary } else { Color32::from_black_alpha(110) });
+            painter.circle_stroke(c, 13.0, Stroke::new(2.0_f32, Color32::WHITE));
+            if selected {
+                painter.text(c, Align2::CENTER_CENTER, ICON_CHECK, FontId::proportional(17.0), p.on_primary);
+            }
+        }
+        let check_resp = check_resp.on_hover_text(if selected { crate::i18n::tr("Retirer de la sélection") } else { crate::i18n::tr("Ajouter à la sélection") });
+        let _ = check_resp;
 
         // Barre d'actions au survol.
         let mut consumed = false;
@@ -452,13 +522,13 @@ impl Workspace {
                         1 => actions.push(WsAction::Copy(path.clone())),
                         2 => actions.push(WsAction::Reveal(path.clone())),
                         4 => actions.push(WsAction::TogglePin(self.targets(&path))),
-                        _ => self.confirm_delete = Some(vec![path.clone()]),
+                        _ => self.confirm_delete = Some(self.targets(&path)),
                     }
                 }
             }
         }
 
-        if !consumed && resp.double_clicked() {
+        if !consumed && !check_clicked && resp.double_clicked() {
             actions.push(if is_video { WsAction::Open(path.clone()) } else { WsAction::Edit(path.clone()) });
         }
         let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
