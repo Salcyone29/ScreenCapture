@@ -34,6 +34,12 @@ Según el ajuste «Después de la captura»:
 - **Editor**: la imagen se abre directamente para anotarla.
 - **Nada**: la captura solo se guarda y/o se copia.
 La captura también puede copiarse automáticamente al portapapeles y guardarse en la carpeta de capturas (Ajustes).
+## Captura con desplazamiento
+Para capturar una página más alta que la pantalla (página web, documento…): tarjeta **Desplazamiento** de la página de inicio, o menú del área de notificación.
+- Seleccionar la zona que se desplaza, preferiblemente sin la barra de desplazamiento.
+- La página se desplaza sola hacia abajo y las imágenes se unen; la captura se detiene al final de la página, o con **Terminar** / `Esc`.
+- Los encabezados y pies de página fijos solo se conservan una vez.
+> En Mac, el desplazamiento automático necesita el permiso **Accesibilidad** (Ajustes del Sistema > Privacidad y seguridad). Sin él, desplace usted mismo la página con la rueda o el trackpad y luego **Terminar**.
 
 # Anotar en el editor
 ![editeur]
@@ -48,6 +54,8 @@ Mantener `Mayús` al dibujar da ángulos de 45° (flechas, líneas) o formas reg
 ## Modificar una forma
 - **Seleccionar**: herramienta Selección y clic en la forma. Los tiradores permiten cambiar su tamaño.
 - **Mover**: arrastrar la forma, o las flechas del teclado (`Mayús` + flecha: 10 píxeles).
+- **Moverse por la imagen ampliada**: mantener pulsado el **botón derecho** (o el central) y mover el ratón; la rueda también desplaza.
+- **Bocadillos**: cuatro tipos (redondeado, rectangular, ovalado, pensamiento) en el panel derecho. El **tirador de la punta** se arrastra para orientarla o alargarla sin mover el bocadillo; «Punta predeterminada» la recoloca.
 - **Duplicar**: `Ctrl + D`, o el botón «Duplicar» del panel derecho. Un número duplicado toma el número siguiente de la serie.
 - **Modificar el contenido**: **doble clic** en un texto, bocadillo, número o sello (o botón «Modificar el contenido»). Para un número, escriba el nuevo valor (5, e, IV… según el estilo) y pulse `Intro`.
 - **Color, grosor, tamaño del texto, relleno, sombra, discontinuo**: panel derecho, aplicados a la forma seleccionada, o a las siguientes formas si no hay nada seleccionado.
@@ -102,6 +110,7 @@ Las capturas **ancladas** (chincheta en la miniatura) y la abierta en el editor 
 - **Colores del editor**: modificar, añadir o quitar los colores propuestos.
 - **Actualizaciones**: búsqueda automática y botón «Buscar ahora».
 - **Apariencia e inicio**: idioma (francés, inglés, español, alemán o el del sistema), tema claro u oscuro, color de énfasis, cierre en el área de notificación, inicio minimizado.
+- **Iniciar al arrancar Windows** (o al abrir sesión en Mac): se activa o desactiva en cualquier momento, aunque se haya elegido en la instalación. El interruptor muestra el estado real.
 
 # Actualizaciones y versión portátil
 ## Actualizaciones

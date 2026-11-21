@@ -34,6 +34,12 @@ Selon le réglage « Après la capture » :
 - **Éditeur** : l'image s'ouvre directement pour être annotée.
 - **Rien** : la capture est seulement enregistrée et/ou copiée.
 La capture peut aussi être copiée automatiquement dans le presse-papiers et enregistrée dans le dossier des captures (Paramètres).
+## Capture avec défilement
+Pour capturer une page plus haute que l'écran (page web, document…) : carte **Défilement** de l'accueil, ou menu de la zone de notification.
+- Sélectionner la zone qui défile, de préférence sans la barre de défilement.
+- La page défile toute seule vers le bas et les images sont assemblées ; la capture s'arrête en bas de la page, ou avec **Terminer** / `Échap`.
+- Les en-têtes et pieds de page fixes ne sont gardés qu'une fois.
+> Sur Mac, le défilement automatique demande l'autorisation **Accessibilité** (Réglages Système > Confidentialité et sécurité). Sans elle, faites défiler vous-même la page avec la molette ou le pavé tactile, puis **Terminer**.
 
 # Annoter dans l'éditeur
 ![editeur]
@@ -48,6 +54,8 @@ Tenir `Maj` en traçant donne des angles de 45° (flèches, lignes) ou des forme
 ## Modifier une forme
 - **Sélectionner** : outil Sélection, puis clic sur la forme. Les poignées permettent de la redimensionner.
 - **Déplacer** : glisser la forme, ou les flèches du clavier (`Maj` + flèche : 10 pixels).
+- **Se déplacer dans l'image zoomée** : maintenir le **clic droit** (ou le bouton du milieu) et déplacer la souris ; la molette fait aussi défiler.
+- **Bulles** : quatre types (arrondie, rectangulaire, ovale, pensée) dans le panneau de droite. La **poignée de la pointe** se glisse pour l'orienter ou l'allonger sans déplacer la bulle ; « Pointe par défaut » la remet en place.
 - **Dupliquer** : `Ctrl + D`, ou le bouton « Dupliquer » du panneau de droite. Un numéro dupliqué prend le numéro suivant de la série.
 - **Modifier le contenu** : **double-clic** sur un texte, une bulle, un numéro ou un tampon (ou bouton « Modifier le contenu »). Pour un numéro, tapez la nouvelle valeur (5, e, IV… selon le style) puis `Entrée`.
 - **Couleur, épaisseur, taille du texte, remplissage, ombre, pointillés** : panneau de droite, appliqués à la forme sélectionnée, ou aux prochaines formes si rien n'est sélectionné.
@@ -102,6 +110,7 @@ Les captures **épinglées** (punaise sur la vignette) et celle ouverte dans l'�
 - **Couleurs de l'éditeur** : modifier, ajouter ou retirer les couleurs proposées.
 - **Mises à jour** : recherche automatique et bouton « Rechercher maintenant ».
 - **Apparence et démarrage** : langue (français, anglais, espagnol, allemand ou celle du système), thème clair ou sombre, couleur d'accent, fermeture dans la zone de notification, démarrage réduit.
+- **Lancer au démarrage de Windows** (ou à l'ouverture de session sur Mac) : s'active ou se désactive à tout moment, même si le choix a été fait à l'installation. L'interrupteur montre l'état réel.
 
 # Mises à jour et version portable
 ## Mises à jour

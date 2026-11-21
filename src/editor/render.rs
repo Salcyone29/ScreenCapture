@@ -11,7 +11,7 @@ use tiny_skia::{
     Pixmap, PremultipliedColorU8, SpreadMode, Stroke, StrokeDash, Transform,
 };
 
-use super::model::{number_half_width, number_radius, Kind, Shape, Style};
+use super::model::{number_half_width, number_radius, BubbleKind, Kind, Shape, Style};
 
 struct Fonts {
     regular: Option<FontVec>,
@@ -313,7 +313,12 @@ pub fn text_box_size(shape: &Shape) -> (f32, f32) {
         }
         Kind::Bubble(t) => {
             let (w, h) = measure_text(if t.is_empty() { " " } else { t }, shape.style.font_size, false);
-            (w + TEXT_PAD * 2.4, h + TEXT_PAD * 1.6)
+            let (w, h) = (w + TEXT_PAD * 2.4, h + TEXT_PAD * 1.6);
+            match shape.style.bubble {
+                // Le texte doit tenir dans l'ellipse inscrite : boîte agrandie de √2.
+                BubbleKind::Oval | BubbleKind::Thought => (w * 1.42, h * 1.42 + TEXT_PAD),
+                _ => (w, h),
+            }
         }
         Kind::Stamp(t) => {
             let (w, h) = measure_text(t, shape.style.font_size * 1.3, true);
@@ -321,6 +326,89 @@ pub fn text_box_size(shape: &Shape) -> (f32, f32) {
         }
         _ => (0.0, 0.0),
     }
+}
+
+/// Pointe d'une bulle (coordonnées de l'image).
+pub fn bubble_tip(s: &Shape) -> Pos2 {
+    let (w, h) = text_box_size(s);
+    match s.style.tail {
+        Some(o) => s.a + o,
+        None => s.a + eframe::egui::vec2((w * 0.18).clamp(12.0, 40.0) - 6.0, h + 18.0),
+    }
+}
+
+/// Décalage du texte d'une bulle par rapport à son coin haut gauche (texte centré).
+pub fn bubble_text_offset(s: &Shape) -> eframe::egui::Vec2 {
+    let Kind::Bubble(t) = &s.kind else { return eframe::egui::Vec2::ZERO };
+    let (w, h) = text_box_size(s);
+    let (tw, th) = measure_text(if t.is_empty() { " " } else { t }, s.style.font_size, false);
+    eframe::egui::vec2((w - tw) / 2.0, (h - th) / 2.0)
+}
+
+fn draw_bubble(pm: &mut Pixmap, s: &Shape, t: &str) {
+    let st = &s.style;
+    let (w, h) = text_box_size(s);
+    let body = Rect::from_min_size(s.a, eframe::egui::vec2(w, h));
+    let tip = bubble_tip(s);
+    let c = body.center();
+    let d = tip - c;
+    let len = d.length();
+    if st.bubble == BubbleKind::Thought {
+        // Petits nuages de plus en plus petits jusqu'à la pointe.
+        if len > 1.0 {
+            let dir = d / len;
+            // Bord de l'ellipse dans la direction de la pointe.
+            let (rx, ry) = (w / 2.0, h / 2.0);
+            let edge = 1.0 / ((dir.x / rx).powi(2) + (dir.y / ry).powi(2)).sqrt();
+            let base = (h.min(w) * 0.16).clamp(6.0, 18.0);
+            let start = (edge + base * 1.2).min(len);
+            for (k, f) in [(0.0f32, 1.0f32), (0.55, 0.75), (1.0, 0.5)] {
+                let p = c + dir * (start + (len - start) * k);
+                if let Some(path) = PathBuilder::from_circle(p.x, p.y, base * f) {
+                    fill_with_shadow(pm, &path, st, st.color);
+                }
+            }
+        }
+        // Nuage : ellipse bordée de bosses (un seul chemin, une seule ombre).
+        let mut pb = PathBuilder::new();
+        if let Some(r) = tiny_skia::Rect::from_ltrb(body.left(), body.top(), body.right(), body.bottom()) {
+            pb.push_oval(r);
+        }
+        let bump = (w.min(h) * 0.22).clamp(6.0, 40.0);
+        let n = ((std::f32::consts::PI * (w + h) / 2.0) / (bump * 1.4)).round().clamp(8.0, 28.0) as usize;
+        for i in 0..n {
+            let a = i as f32 / n as f32 * std::f32::consts::TAU;
+            let p = c + eframe::egui::vec2(a.cos() * (w / 2.0 - bump * 0.35), a.sin() * (h / 2.0 - bump * 0.35));
+            pb.push_circle(p.x, p.y, bump);
+        }
+        if let Some(path) = pb.finish() {
+            fill_with_shadow(pm, &path, st, st.color);
+        }
+    } else {
+        // Pointe : triangle depuis le centre de la bulle (le corps recouvre sa base).
+        if len > 1.0 {
+            let n = eframe::egui::vec2(-d.y, d.x) / len;
+            let half = (w.min(h) * 0.22).clamp(6.0, 26.0);
+            let (b1, b2) = (c + n * half, c - n * half);
+            let mut pb = PathBuilder::new();
+            pb.move_to(b1.x, b1.y);
+            pb.line_to(tip.x, tip.y);
+            pb.line_to(b2.x, b2.y);
+            pb.close();
+            if let Some(tail) = pb.finish() {
+                fill_with_shadow(pm, &tail, st, st.color);
+            }
+        }
+        let path = match st.bubble {
+            BubbleKind::Rectangle => rect_path(body, 0.0),
+            BubbleKind::Oval => oval_path(body),
+            _ => rect_path(body, 12.0),
+        };
+        if let Some(p) = path {
+            fill_with_shadow(pm, &p, st, st.color);
+        }
+    }
+    draw_text(pm, t, st.font_size, false, s.a + bubble_text_offset(s), contrast_on(st.color));
 }
 
 fn draw_shape(pm: &mut Pixmap, s: &Shape) {
@@ -401,23 +489,7 @@ fn draw_shape(pm: &mut Pixmap, s: &Shape) {
             }
             draw_text(pm, t, st.font_size, false, origin, st.color);
         }
-        Kind::Bubble(t) => {
-            let (w, h) = text_box_size(s);
-            let body = Rect::from_min_size(s.a, eframe::egui::vec2(w, h));
-            let mut pb = PathBuilder::new();
-            let tail_x = body.left() + (w * 0.18).clamp(12.0, 40.0);
-            pb.move_to(tail_x, body.bottom() - 1.0);
-            pb.line_to(tail_x - 6.0, body.bottom() + 18.0);
-            pb.line_to(tail_x + 16.0, body.bottom() - 1.0);
-            pb.close();
-            if let Some(tail) = pb.finish() {
-                fill_with_shadow(pm, &tail, st, st.color);
-            }
-            if let Some(p) = rect_path(body, 12.0) {
-                fill_with_shadow(pm, &p, st, st.color);
-            }
-            draw_text(pm, t, st.font_size, false, s.a + eframe::egui::vec2(TEXT_PAD * 1.2, TEXT_PAD * 0.8), contrast_on(st.color));
-        }
+        Kind::Bubble(t) => draw_bubble(pm, s, t),
         Kind::Number(n, f) => {
             let rad = number_radius(st);
             let label = f.format(*n);
@@ -660,5 +732,48 @@ mod tests {
         let f = FontVec::try_from_vec_and_index(d.font.to_vec(), d.index).expect("police intégrée");
         assert!(f.glyph_id('A').0 != 0);
         assert!(load_font(false).is_some() && load_font(true).is_some());
+    }
+
+    /// Bulles : chaque type se dessine, et la pointe déplacée colore le pixel visé.
+    #[test]
+    fn bulles_et_pointe() {
+        use super::super::model::BubbleKind;
+        let base = RgbaImage::from_pixel(400, 300, image::Rgba([255, 255, 255, 255]));
+        for k in BubbleKind::ALL {
+            let mut style = Style { bubble: k, shadow: false, color: [200, 0, 0, 255], ..Style::default() };
+            style.tail = Some(eframe::egui::vec2(250.0, 200.0));
+            let s = Shape { kind: Kind::Bubble("Bonjour".into()), a: eframe::egui::pos2(40.0, 40.0), b: eframe::egui::pos2(40.0, 40.0), style };
+            assert_eq!(bubble_tip(&s), eframe::egui::pos2(290.0, 240.0));
+            let out = render(&base, &[s.clone()]);
+            let c = s.a + eframe::egui::vec2(text_box_size(&s).0 / 2.0, 4.0);
+            let (w, h) = text_box_size(&s);
+            let centre = s.a + eframe::egui::vec2(w / 2.0, h / 2.0);
+            let q = if k == BubbleKind::Thought { bubble_tip(&s) } else { centre + (bubble_tip(&s) - centre) * 0.85 };
+            let near_tip = out.get_pixel(q.x as u32, q.y as u32).0;
+            assert!(near_tip[1] < 100, "{k:?} : pointe absente {near_tip:?}");
+            assert!(out.get_pixel(c.x as u32, (c.y + text_box_size(&s).1 / 2.0) as u32).0[1] < 255, "{k:?} : corps absent");
+        }
+    }
+
+    /// Planche des bulles (SC_BULLES_PNG=chemin pour l'écrire).
+    #[test]
+    fn planche_bulles() {
+        use super::super::model::BubbleKind;
+        let Ok(path) = std::env::var("SC_BULLES_PNG") else { return };
+        let base = RgbaImage::from_pixel(900, 260, image::Rgba([240, 240, 240, 255]));
+        let shapes: Vec<Shape> = BubbleKind::ALL
+            .iter()
+            .enumerate()
+            .map(|(i, k)| {
+                let tail = if i % 2 == 0 { None } else { Some(eframe::egui::vec2(-30.0, 150.0)) };
+                Shape {
+                    kind: Kind::Bubble(k.label().into()),
+                    a: eframe::egui::pos2(30.0 + i as f32 * 220.0, 30.0),
+                    b: eframe::egui::pos2(0.0, 0.0),
+                    style: Style { bubble: *k, tail, color: [30, 136, 229, 255], ..Style::default() },
+                }
+            })
+            .collect();
+        render(&base, &shapes).save(path).unwrap();
     }
 }

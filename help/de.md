@@ -34,6 +34,12 @@ Je nach Einstellung „Nach der Aufnahme“:
 - **Editor**: Das Bild öffnet sich direkt zum Beschriften.
 - **Nichts**: Die Aufnahme wird nur gespeichert und/oder kopiert.
 Die Aufnahme kann außerdem automatisch in die Zwischenablage kopiert und im Aufnahmeordner gespeichert werden (Einstellungen).
+## Scroll-Aufnahme
+Um eine Seite aufzunehmen, die höher als der Bildschirm ist (Webseite, Dokument…): Karte **Scrollen** auf der Startseite oder Menü im Infobereich.
+- Den scrollenden Bereich wählen, möglichst ohne Bildlaufleiste.
+- Die Seite scrollt von selbst nach unten und die Bilder werden zusammengesetzt; die Aufnahme endet am Seitenende oder mit **Fertig** / `Esc`.
+- Feste Kopf- und Fußzeilen werden nur einmal übernommen.
+> Auf dem Mac braucht das automatische Scrollen die Berechtigung **Bedienungshilfen** (Systemeinstellungen > Datenschutz & Sicherheit). Ohne sie die Seite selbst mit Mausrad oder Trackpad scrollen, dann **Fertig**.
 
 # Im Editor beschriften
 ![editeur]
@@ -48,6 +54,8 @@ Wenn Sie beim Zeichnen `Umschalt` gedrückt halten, entstehen 45°-Winkel (Pfeil
 ## Eine Form bearbeiten
 - **Auswählen**: Werkzeug Auswahl, dann auf die Form klicken. Mit den Griffen ändern Sie ihre Größe.
 - **Verschieben**: die Form ziehen oder die Pfeiltasten verwenden (`Umschalt` + Pfeil: 10 Pixel).
+- **Im vergrößerten Bild bewegen**: die **rechte Maustaste** (oder die mittlere) gedrückt halten und die Maus bewegen; das Mausrad scrollt ebenfalls.
+- **Sprechblasen**: vier Typen (abgerundet, rechteckig, oval, Gedanke) im rechten Bereich. Den **Griff der Spitze** ziehen, um sie auszurichten oder zu verlängern, ohne die Blase zu verschieben; „Standardspitze“ setzt sie zurück.
 - **Duplizieren**: `Strg + D` oder die Schaltfläche „Duplizieren“ im rechten Bereich. Eine duplizierte Nummer erhält die nächste Nummer der Reihe.
 - **Inhalt ändern**: **Doppelklick** auf einen Text, eine Sprechblase, eine Nummer oder einen Stempel (oder Schaltfläche „Inhalt ändern“). Bei einer Nummer den neuen Wert eingeben (5, e, IV… je nach Stil) und `Eingabe` drücken.
 - **Farbe, Stärke, Textgröße, Füllung, Schatten, gestrichelt**: rechter Bereich, angewendet auf die ausgewählte Form oder auf die nächsten Formen, wenn nichts ausgewählt ist.
@@ -102,6 +110,7 @@ In den Einstellungen kann ScreenCapture alte Aufnahmen automatisch löschen:
 - **Editorfarben**: die angebotenen Farben ändern, hinzufügen oder entfernen.
 - **Updates**: automatische Suche und Schaltfläche „Jetzt suchen“.
 - **Darstellung und Start**: Sprache (Französisch, Englisch, Spanisch, Deutsch oder die des Systems), helles oder dunkles Design, Akzentfarbe, Schließen in den Infobereich, minimiert starten.
+- **Beim Windows-Start ausführen** (bzw. bei der Anmeldung auf dem Mac): jederzeit ein- oder ausschaltbar, auch wenn es bei der Installation gewählt wurde. Der Schalter zeigt den tatsächlichen Zustand.
 
 # Updates und portable Version
 ## Updates

@@ -12,6 +12,7 @@ mod overlay;
 mod platform;
 mod recorder;
 mod retention;
+mod scroll;
 mod settings;
 mod texture;
 mod theme;

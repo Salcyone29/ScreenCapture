@@ -5,12 +5,13 @@ Outil de capture d'écran, d'annotation et d'enregistrement vidéo écrit en Rus
 ## Fonctionnalités
 
 - Capture de zone, plein écran, fenêtre, dernière zone et capture différée
+- Capture avec défilement : page plus haute que l'écran, assemblée automatiquement
 - Coller une image (Ctrl+V) ou glisser des fichiers dans l'espace de travail : ils sont ajoutés au dossier des captures
 - Éditeur : flèches, formes, texte, bulles, surligneur, flou, loupe, numérotation (1, 01, A, a, I, i, α), tampons, recadrage, découpe de bande (droite ou zigzag), déplacement de zone, pipette, nuancier personnalisable
 - Reconnaissance de texte (OCR)
 - Enregistrement vidéo MP4 / WebM / GIF via FFmpeg, avec micro
 - Historique des captures (sélection multiple par case, épinglage, conservation automatique), raccourcis globaux, icône dans la zone de notification
-- Éditeur : duplication des formes (Ctrl+D), modification d'un texte, numéro ou tampon par double-clic, tampon personnalisé
+- Éditeur : duplication des formes (Ctrl+D), modification d'un texte, numéro ou tampon par double-clic, tampon personnalisé, quatre types de bulles avec pointe orientable, déplacement dans l'image zoomée au clic droit
 - Aide intégrée (touche F1) dans les quatre langues
 - Mise à jour intégrée : bandeau quand une nouvelle version est publiée, installation en un clic
 
@@ -36,7 +37,9 @@ cargo build --release          # target\release\ScreenCapture.exe
 Télécharger `ScreenCapture-x.y.z-macOS.dmg` dans les [Releases](../../releases) (binaire universel Apple Silicon et Intel, macOS 11 ou plus récent), puis glisser ScreenCapture dans Applications.
 
 - L'application n'est pas signée par un compte Apple Developer : au premier lancement, faire **clic droit → Ouvrir**, puis **Ouvrir**.
-- Autoriser ScreenCapture dans **Réglages Système → Confidentialité et sécurité → Enregistrement de l'écran** (et **Micro** pour le son des vidéos), puis relancer l'application.
+- Autoriser ScreenCapture dans **Réglages Système → Confidentialité et sécurité → Enregistrement de l'écran** (et **Micro** pour le son des vidéos), puis relancer l'application. Si les captures restent noires, supprimer l'entrée avec −, la rajouter, puis relancer : un bandeau rouge le rappelle dans l'application.
+- Depuis la 0.1.15, l'application est signée avec un certificat stable : l'autorisation est conservée d'une mise à jour à l'autre.
+- Capture avec défilement automatique : autorisation **Accessibilité** (sinon, faire défiler à la main).
 - Vidéo : installer FFmpeg avec `brew install ffmpeg`.
 - Raccourcis par défaut : ⌘⇧2 zone, ⌘⇧1 plein écran, ⌘⇧7 fenêtre, ⌘⇧8 dernière zone, ⌘⇧9 vidéo (⌘⇧3/4/5 restent ceux de macOS).
 - Une capture de zone porte sur l'écran où se trouve le pointeur.

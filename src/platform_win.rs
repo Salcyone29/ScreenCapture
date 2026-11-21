@@ -617,3 +617,118 @@ pub fn is_v_key_down() -> bool {
     use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
     unsafe { GetAsyncKeyState(0x56) as u16 & 0x8000 != 0 }
 }
+
+/// Lancement au démarrage de Windows : valeur « ScreenCapture » de la clé Run de l'utilisateur,
+/// ou raccourci posé par l'installeur dans le dossier Démarrage (utilisateur ou tous les utilisateurs).
+const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+const RUN_VALUE: &str = "ScreenCapture";
+
+fn startup_shortcuts() -> Vec<std::path::PathBuf> {
+    let mut v = Vec::new();
+    for (var, sub) in [("APPDATA", r"Microsoft\Windows\Start Menu\Programs\Startup"), ("ProgramData", r"Microsoft\Windows\Start Menu\Programs\StartUp")] {
+        if let Some(dir) = std::env::var_os(var) {
+            v.push(std::path::Path::new(&dir).join(sub).join("ScreenCapture.lnk"));
+        }
+    }
+    v
+}
+
+fn wide(s: &str) -> Vec<u16> {
+    s.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+fn run_value_exists(name: &str) -> bool {
+    use windows::core::PCWSTR;
+    use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_SZ};
+    let (key, name) = (wide(RUN_KEY), wide(name));
+    unsafe { RegGetValueW(HKEY_CURRENT_USER, PCWSTR(key.as_ptr()), PCWSTR(name.as_ptr()), RRF_RT_REG_SZ, None, None, None) }.is_ok()
+}
+
+fn set_run_value(name: &str, command: &str) -> anyhow::Result<()> {
+    use windows::core::PCWSTR;
+    use windows::Win32::System::Registry::{RegSetKeyValueW, HKEY_CURRENT_USER, REG_SZ};
+    let (key, name, cmd) = (wide(RUN_KEY), wide(name), wide(command));
+    unsafe {
+        RegSetKeyValueW(HKEY_CURRENT_USER, PCWSTR(key.as_ptr()), PCWSTR(name.as_ptr()), REG_SZ.0, Some(cmd.as_ptr() as *const _), (cmd.len() * 2) as u32)
+    }
+    .ok()?;
+    Ok(())
+}
+
+fn delete_run_value(name: &str) -> anyhow::Result<()> {
+    use windows::core::PCWSTR;
+    use windows::Win32::System::Registry::{RegDeleteKeyValueW, HKEY_CURRENT_USER};
+    let (key, name) = (wide(RUN_KEY), wide(name));
+    unsafe { RegDeleteKeyValueW(HKEY_CURRENT_USER, PCWSTR(key.as_ptr()), PCWSTR(name.as_ptr())) }.ok()?;
+    Ok(())
+}
+
+pub fn launch_at_startup() -> bool {
+    run_value_exists(RUN_VALUE) || startup_shortcuts().iter().any(|p| p.exists())
+}
+
+pub fn set_launch_at_startup(on: bool) -> anyhow::Result<()> {
+    if on {
+        if !launch_at_startup() {
+            let exe = std::env::current_exe()?;
+            set_run_value(RUN_VALUE, &format!("\"{}\" --tray", exe.display()))?;
+        }
+        return Ok(());
+    }
+    if run_value_exists(RUN_VALUE) {
+        delete_run_value(RUN_VALUE)?;
+    }
+    for p in startup_shortcuts() {
+        if p.exists() {
+            std::fs::remove_file(&p).map_err(|_| {
+                anyhow::anyhow!(crate::i18n::tr("Le lancement au démarrage a été installé pour tous les utilisateurs : seul un administrateur peut le retirer."))
+            })?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::*;
+
+    /// Écriture, lecture et suppression d'une valeur de la clé Run (nom de test, sans toucher
+    /// au réglage réel de l'utilisateur).
+    #[test]
+    fn valeur_run() {
+        let name = "ScreenCapture-test-unitaire";
+        let _ = delete_run_value(name);
+        assert!(!run_value_exists(name));
+        set_run_value(name, "\"C:\\x.exe\" --tray").unwrap();
+        assert!(run_value_exists(name));
+        delete_run_value(name).unwrap();
+        assert!(!run_value_exists(name));
+    }
+}
+
+/// Capture défilante : Windows accepte toujours la molette simulée.
+pub fn can_simulate_scroll() -> bool {
+    true
+}
+
+pub fn move_cursor(x: i32, y: i32) {
+    let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::SetCursorPos(x, y) };
+}
+
+/// Fait défiler vers le bas la fenêtre sous le point (x, y) de `notches` crans de molette.
+pub fn scroll_wheel(x: i32, y: i32, notches: i32) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEEVENTF_WHEEL, MOUSEINPUT, MOUSE_EVENT_FLAGS};
+    let send = |dx: i32, data: i32, flags: MOUSE_EVENT_FLAGS| {
+        let input = INPUT { r#type: INPUT_MOUSE, Anonymous: INPUT_0 { mi: MOUSEINPUT { dx, dy: 0, mouseData: data as u32, dwFlags: flags, time: 0, dwExtraInfo: 0 } } };
+        unsafe { SendInput(&[input], std::mem::size_of::<INPUT>() as i32) };
+    };
+    move_cursor(x, y);
+    // Petit mouvement réel : certaines applications ne défilent que sous un pointeur « survolant ».
+    send(1, 0, MOUSEEVENTF_MOVE);
+    send(-1, 0, MOUSEEVENTF_MOVE);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    for _ in 0..notches.max(1) {
+        send(0, -120, MOUSEEVENTF_WHEEL);
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    }
+}

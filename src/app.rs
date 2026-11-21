@@ -33,6 +33,8 @@ pub enum CaptureKind {
     LastRegion,
     Delayed,
     Video,
+    /// Capture avec défilement (zone plus haute que l'écran).
+    Scrolling,
 }
 
 pub enum AppEvent {
@@ -55,6 +57,8 @@ pub enum AppEvent {
     UpdateChecked { result: Result<Option<crate::update::Release>, String>, manual: bool },
     /// Téléchargement de la mise à jour terminé : fichier prêt, ou erreur.
     UpdateDownloaded(Result<PathBuf, String>),
+    /// Capture défilante terminée.
+    ScrollDone(Result<RgbaImage, String>),
 }
 
 /// Contenu de la fenêtre principale.
@@ -173,6 +177,7 @@ impl SizeKeeper {
 const TITLE_OVERLAY: &str = "ScreenCapture — Sélection";
 const TITLE_POPUP: &str = "ScreenCapture — Miniature";
 const TITLE_RECBAR: &str = "ScreenCapture — Enregistrement";
+const TITLE_SCROLLBAR: &str = "ScreenCapture — Défilement";
 
 /// Fenêtre flottante sans bordure ni bouton dans la barre des tâches, créée invisible.
 fn floating_builder(title: &str, r: Rect) -> egui::ViewportBuilder {
@@ -291,6 +296,10 @@ pub struct App {
     recbar_win: Floating,
     /// Rectangle de la barre d'enregistrement (pixels physiques).
     recbar_rect: Rect,
+    /// Capture défilante en cours : suivi, et barre « Terminer » (hors de la zone capturée).
+    scrolling: Option<crate::scroll::Progress>,
+    scrollbar_rect: Rect,
+    scrollbar_win: Floating,
     page: Page,
     settings: Settings,
     workspace: Workspace,
@@ -319,6 +328,8 @@ pub struct App {
     /// macOS n'autorise pas (ou plus) l'enregistrement de l'écran : bandeau d'explication.
     screen_access_missing: bool,
     next_access_check: Instant,
+    /// Lancement au démarrage du système (lu à l'ouverture des Paramètres).
+    launch_at_startup: Option<bool>,
     busy: bool,
     /// Début de la capture en cours, pour ne jamais rester bloqué en « occupé ».
     busy_since: Instant,
@@ -490,6 +501,9 @@ impl App {
             popup_win: Floating::default(),
             recbar_win: Floating::default(),
             recbar_rect: Rect::new(0, 0, 1, 1),
+            scrolling: None,
+            scrollbar_rect: Rect::new(0, 0, 1, 1),
+            scrollbar_win: Floating::default(),
             page: Page::Home,
             workspace: Workspace::new(&ctx),
             help: crate::help::Help::default(),
@@ -515,6 +529,7 @@ impl App {
             next_update_check: Instant::now() + Duration::from_secs(8),
             screen_access_missing: !platform::screen_capture_allowed(),
             next_access_check: Instant::now() + Duration::from_secs(5),
+            launch_at_startup: None,
             busy: false,
             busy_since: Instant::now(),
             capture_cancelled: false,
@@ -674,7 +689,11 @@ impl App {
             }
             return;
         }
-        let purpose = if kind == CaptureKind::Video { Purpose::Video } else { Purpose::Image };
+        let purpose = match kind {
+            CaptureKind::Video => Purpose::Video,
+            CaptureKind::Scrolling => Purpose::Scroll,
+            _ => Purpose::Image,
+        };
         let mut overlay = Overlay::new(purpose, origin, image);
         overlay.magnifier = self.settings.show_magnifier;
         if purpose == Purpose::Video && self.settings.audio_device.is_some() && self.settings.video_format != VideoFormat::Gif {
@@ -1071,6 +1090,7 @@ impl App {
                     Some("last") => self.start_capture(CaptureKind::LastRegion, ctx, false),
                     Some("delayed") => self.start_capture(CaptureKind::Delayed, ctx, false),
                     Some("video") => self.start_capture(CaptureKind::Video, ctx, false),
+                    Some("scroll") => self.start_capture(CaptureKind::Scrolling, ctx, false),
                     Some("open") => {
                         if self.mode != Mode::Editor {
                             self.page = Page::Home;
@@ -1090,6 +1110,17 @@ impl App {
                 AppEvent::TrayOpen => self.open_from_outside(),
                 AppEvent::Command(c) => self.command(&c, ctx),
                 AppEvent::CancelCapture => self.cancel_capture(),
+                AppEvent::ScrollDone(r) => {
+                    self.scrolling = None;
+                    self.busy = false;
+                    match r {
+                        Ok(img) => self.finish_capture(ctx, img),
+                        Err(e) => {
+                            self.end_capture();
+                            self.toast(crate::i18n::trf("Échec de la capture : {0}", &[&e]));
+                        }
+                    }
+                }
                 // Capture annulée par Échap pendant le délai : l'image arrivée est ignorée.
                 AppEvent::Captured { .. } | AppEvent::CaptureFailed(_) if std::mem::take(&mut self.capture_cancelled) => {}
                 AppEvent::Captured { kind, image, origin, target } => self.on_captured(ctx, kind, image, origin, target),
@@ -1141,6 +1172,11 @@ impl App {
 
     /// Échap pendant une capture : délai en cours, écran en cours de prise ou sélection affichée.
     fn cancel_capture(&mut self) {
+        if let Some(p) = &self.scrolling {
+            crate::diag::log("capture défilante arrêtée (Échap)");
+            p.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+            return;
+        }
         if self.overlay.take().is_some() {
             crate::diag::log("sélection annulée (Échap)");
             self.end_capture();
@@ -1172,6 +1208,12 @@ impl App {
             "last" => self.start_capture(CaptureKind::LastRegion, ctx, false),
             "video" => self.start_capture(CaptureKind::Video, ctx, false),
             "delayed" => self.start_capture(CaptureKind::Delayed, ctx, false),
+            "scroll" => self.start_capture(CaptureKind::Scrolling, ctx, false),
+            "scroll-stop" => {
+                if let Some(p) = &self.scrolling {
+                    p.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+                }
+            }
             "mic" => self.toggle_recording_mic(),
             "retention" => self.run_retention(ctx, true),
             c if c.starts_with("pin ") => {
@@ -1741,6 +1783,18 @@ impl App {
                 theme::setting_row(ui, crate::i18n::tr("Démarrer réduit"), crate::i18n::tr("Lancer directement dans la zone de notification"), |ui| {
                     changed |= theme::switch(ui, &mut self.settings.start_in_tray).changed();
                 });
+                // État réel du système (installeur, réglage précédent ou retrait manuel).
+                let startup_label = if cfg!(target_os = "macos") { crate::i18n::tr("Lancer à l'ouverture de session") } else { crate::i18n::tr("Lancer au démarrage de Windows") };
+                theme::setting_row(ui, startup_label, crate::i18n::tr("ScreenCapture démarre dans la zone de notification"), |ui| {
+                    let mut on = *self.launch_at_startup.get_or_insert_with(platform::launch_at_startup);
+                    if theme::switch(ui, &mut on).changed() {
+                        if let Err(e) = platform::set_launch_at_startup(on) {
+                            crate::diag::log(&format!("lancement au démarrage : {e}"));
+                            self.snackbar = Some((e.to_string(), Instant::now()));
+                        }
+                        self.launch_at_startup = Some(platform::launch_at_startup());
+                    }
+                });
             });
             ui.add_space(24.0);
         });
@@ -2097,6 +2151,7 @@ impl App {
                             None => self.end_capture(),
                         }
                     }
+                    Purpose::Scroll => self.start_scroll_capture(ctx, r),
                     Purpose::Video => {
                         // Choix « avec / sans le son » fait dans la sélection : gardé pour la suite.
                         if let Some(a) = ov.audio {
@@ -2265,6 +2320,81 @@ impl App {
     }
 
     /// Barre d'enregistrement : fenêtre flottante exclue de la vidéo.
+    // ------------------------------------------------------------------ capture défilante
+
+    fn start_scroll_capture(&mut self, ctx: &egui::Context, region: Rect) {
+        let progress = crate::scroll::Progress::default();
+        self.scrolling = Some(progress.clone());
+        self.busy = true;
+        self.busy_since = Instant::now();
+        // Barre « Terminer » au-dessus de la zone (sinon dessous, sinon en haut de l'écran) : elle
+        // ne doit pas recouvrir ce qui est capturé.
+        let s = platform::scale_at(region.x + region.w / 2, region.y + region.h / 2);
+        let (w, h) = ((460.0 * s) as i32, (60.0 * s) as i32);
+        let mon = capture::monitor_at(region.x + region.w / 2, region.y + region.h / 2);
+        let x = (region.x + region.w / 2 - w / 2).clamp(mon.x, mon.x + mon.w - w);
+        let y = if region.y - h - 12 >= mon.y {
+            region.y - h - 12
+        } else if region.y + region.h + 12 + h <= mon.y + mon.h {
+            region.y + region.h + 12
+        } else {
+            mon.y + 12
+        };
+        self.scrollbar_rect = Rect::new(x, y, w, h);
+        self.scrollbar_win = Floating::default();
+        let tx = self.tx.clone();
+        let ctx2 = ctx.clone();
+        std::thread::spawn(move || {
+            let r = std::panic::catch_unwind(move || crate::scroll::run(region, progress));
+            let ev = match r {
+                Ok(Ok(img)) => AppEvent::ScrollDone(Ok(img)),
+                Ok(Err(e)) => AppEvent::ScrollDone(Err(e.to_string())),
+                Err(_) => AppEvent::ScrollDone(Err(crate::i18n::tr("erreur interne pendant la capture").into())),
+            };
+            let _ = tx.send(ev);
+            ctx2.request_repaint();
+        });
+        ctx.request_repaint();
+    }
+
+    fn scroll_bar_viewport(&mut self, ctx: &egui::Context) {
+        if self.scrolling.is_none() {
+            return;
+        }
+        // La capture défilante peut durer : ne pas la considérer comme bloquée.
+        self.busy_since = Instant::now();
+        let rect = self.scrollbar_rect;
+        let auto = platform::can_simulate_scroll();
+        ctx.show_viewport_immediate(egui::ViewportId::from_hash_of("sc_scrollbar"), floating_builder(TITLE_SCROLLBAR, rect), |vctx, _| {
+            self.scrollbar_win.sync(TITLE_SCROLLBAR, rect, false, true, true);
+            let p = palette(vctx);
+            let Some(progress) = self.scrolling.clone() else { return };
+            let height = progress.height.load(std::sync::atomic::Ordering::SeqCst);
+            egui::CentralPanel::default()
+                .frame(egui::Frame::new().fill(p.surface_high).inner_margin(Margin::symmetric(14, 8)))
+                .show(vctx, |ui| {
+                    ui.horizontal_centered(|ui| {
+                        ui.spinner();
+                        ui.vertical(|ui| {
+                            ui.label(egui::RichText::new(crate::i18n::trf("Capture avec défilement : {0} px", &[&height])).font(theme::medium(14.0)).color(p.on_surface));
+                            let hint = if auto {
+                                crate::i18n::tr("Défilement automatique • Échap pour arrêter")
+                            } else {
+                                crate::i18n::tr("Faites défiler la page vers le bas, puis Terminer")
+                            };
+                            ui.label(egui::RichText::new(hint).size(12.0).color(p.on_surface_variant));
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if theme::button(ui, ButtonKind::Filled, Some(ICON_CHECK), crate::i18n::tr("Terminer")).clicked() {
+                                progress.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+                            }
+                        });
+                    });
+                });
+            vctx.request_repaint_after(Duration::from_millis(200));
+        });
+    }
+
     fn recording_bar_viewport(&mut self, ctx: &egui::Context) {
         if self.recorder.is_none() {
             return;
@@ -2464,6 +2594,7 @@ impl eframe::App for App {
         self.overlay_viewport(ctx);
         self.capture_popup_viewport(ctx);
         self.recording_bar_viewport(ctx);
+        self.scroll_bar_viewport(ctx);
 
         // Mises à jour : recherche au démarrage puis une fois par jour ; bandeau si disponible.
         if self.settings.check_updates && Instant::now() >= self.next_update_check {
@@ -2510,6 +2641,10 @@ impl eframe::App for App {
                 }
                 self.nav_rail(ctx);
                 let p = palette(ctx);
+                // État du lancement au démarrage : relu à chaque ouverture des Paramètres.
+                if self.page != Page::Settings {
+                    self.launch_at_startup = None;
+                }
                 let mut ws_actions = Vec::new();
                 egui::CentralPanel::default()
                     .frame(egui::Frame::new().fill(p.surface).inner_margin(Margin { left: 28, right: 20, top: 20, bottom: 0 }))
@@ -2546,13 +2681,14 @@ impl eframe::App for App {
 fn tray_menu(ids: &mut HashMap<String, &'static str>, settings: &Settings) -> anyhow::Result<Menu> {
     let menu = Menu::new();
     let hk = &settings.hotkeys;
-    let entries: [(&'static str, String); 6] = [
+    let entries: [(&'static str, String); 7] = [
         ("region", crate::i18n::trf("Capturer une zone\t{0}", &[&pretty_hotkey(&hk.region)])),
         ("full", crate::i18n::trf("Plein écran\t{0}", &[&pretty_hotkey(&hk.fullscreen)])),
         ("window", crate::i18n::trf("Fenêtre\t{0}", &[&pretty_hotkey(&hk.window)])),
         ("last", crate::i18n::trf("Dernière zone\t{0}", &[&pretty_hotkey(&hk.last_region)])),
         ("delayed", crate::i18n::trf("Capture différée ({0} s)", &[&settings.delay_seconds])),
         ("video", crate::i18n::trf("Enregistrer une vidéo\t{0}", &[&pretty_hotkey(&hk.video)])),
+        ("scroll", crate::i18n::tr("Capture avec défilement").to_string()),
     ];
     for (key, label) in entries {
         let item = MenuItem::with_id(key, label, true, None);

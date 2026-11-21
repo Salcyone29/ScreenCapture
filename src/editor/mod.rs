@@ -17,7 +17,7 @@ use image::RgbaImage;
 use crate::settings::Settings;
 use crate::texture::TiledTexture;
 use crate::theme::{self, palette, ButtonKind};
-use model::{snap45, snap_square, CutDir, CutEdge, Kind, NumberFormat, Shape, Style, Tool, COLORS};
+use model::{snap45, snap_square, BubbleKind, CutDir, CutEdge, Kind, NumberFormat, Shape, Style, Tool, COLORS};
 
 pub enum EditorAction {
     Close,
@@ -43,6 +43,8 @@ enum Drag {
     Cut { start: f32 },
     Area { start: Pos2 },
     Pan,
+    /// Pointe d'une bulle déplacée (la bulle reste en place).
+    Tail(usize),
 }
 
 pub struct Editor {
@@ -453,8 +455,8 @@ impl Editor {
             Tool::Crop => crate::i18n::tr("Glisser pour définir la zone à conserver"),
             Tool::Cut => crate::i18n::tr("Glisser pour choisir la bande à retirer"),
             Tool::MoveArea => crate::i18n::tr("Glisser pour sélectionner une zone, puis la faire glisser • Suppr : la remettre en place"),
-            _ if cfg!(target_os = "macos") => crate::i18n::tr("Glisser pour tracer • Défiler : déplacer • ⌘+défiler ou pincer : zoom"),
-            _ => crate::i18n::tr("Glisser pour tracer • Molette : défiler • Ctrl+molette : zoom"),
+            _ if cfg!(target_os = "macos") => crate::i18n::tr("Glisser pour tracer • Défiler ou clic droit maintenu : déplacer • ⌘+défiler ou pincer : zoom"),
+            _ => crate::i18n::tr("Glisser pour tracer • Molette ou clic droit maintenu : déplacer • Ctrl+molette : zoom"),
         }
     }
 
@@ -730,6 +732,25 @@ impl Editor {
                     theme::switch(ui, v);
                 });
             });
+        }
+
+        // Bulle : forme de la bulle (outil Bulle ou bulle sélectionnée).
+        let bubble_selected = selected.is_some_and(|i| matches!(self.shapes[i].kind, Kind::Bubble(_)));
+        if self.tool == Tool::Bubble && selected.is_none() || bubble_selected {
+            section(ui, crate::i18n::tr("Type de bulle"));
+            ui.horizontal_wrapped(|ui| {
+                for k in BubbleKind::ALL {
+                    if theme::filter_chip(ui, k.label(), self.style.bubble == k).clicked() {
+                        self.style.bubble = k;
+                    }
+                }
+            });
+            if bubble_selected {
+                ui.label(egui::RichText::new(crate::i18n::tr("Glisser la poignée de la pointe pour l'orienter ou l'allonger.")).size(12.0).color(p.on_surface_variant));
+                if self.style.tail.is_some() && theme::button(ui, ButtonKind::Text, Some(ICON_RESTART_ALT), crate::i18n::tr("Pointe par défaut")).clicked() {
+                    self.style.tail = None;
+                }
+            }
         }
 
         if self.style != before {
@@ -1069,9 +1090,13 @@ impl Editor {
 
         let shift = ui.input(|i| i.modifiers.shift);
 
-        // Panoramique : bouton du milieu.
-        if resp.drag_started_by(PointerButton::Middle) {
+        // Panoramique : bouton droit ou bouton du milieu maintenu, puis déplacer la souris.
+        if resp.drag_started_by(PointerButton::Middle) || resp.drag_started_by(PointerButton::Secondary) {
+            self.commit_text();
             self.drag = Drag::Pan;
+        }
+        if matches!(self.drag, Drag::Pan) {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         }
 
         if resp.drag_started_by(PointerButton::Primary) {
@@ -1115,11 +1140,18 @@ impl Editor {
             let s = &self.shapes[i];
             let r = Rect::from_min_max(to_scr(s.rect().min), to_scr(s.rect().max)).expand(4.0);
             painter.rect_stroke(r, 2.0, Stroke::new(1.0_f32, p.primary), StrokeKind::Outside);
-            if s.has_handles() {
+            if s.has_handles() && !matches!(s.kind, Kind::Bubble(_)) {
                 for h in [s.a, s.b] {
                     let c = to_scr(h);
                     painter.circle(c, 6.0, Color32::WHITE, Stroke::new(2.0_f32, p.primary));
                 }
+            }
+        }
+        // Poignée de la pointe des bulles : bulle sélectionnée ou en cours d'écriture.
+        for i in [self.selected, self.editing].into_iter().flatten().filter(|i| *i < self.shapes.len()) {
+            if matches!(self.shapes[i].kind, Kind::Bubble(_)) {
+                let c = to_scr(render::bubble_tip(&self.shapes[i]));
+                painter.circle(c, 6.0, p.primary, Stroke::new(2.0_f32, Color32::WHITE));
             }
         }
 
@@ -1217,7 +1249,7 @@ impl Editor {
             }
         }
 
-        if matches!(self.drag, Drag::Pan) && resp.dragged_by(PointerButton::Middle) {
+        if matches!(self.drag, Drag::Pan) && (resp.dragged_by(PointerButton::Middle) || resp.dragged_by(PointerButton::Secondary)) {
             self.pan += resp.drag_delta();
             self.fit = false;
         }
@@ -1229,11 +1261,22 @@ impl Editor {
     }
 
     fn on_drag_start(&mut self, ip: Pos2, scr: Pos2, to_scr: &dyn Fn(Pos2) -> Pos2) {
+        // Pointe d'une bulle sélectionnée (ou en cours d'écriture) : la déplacer sans la bulle.
+        if matches!(self.tool, Tool::Select | Tool::Bubble | Tool::Text) {
+            for i in [self.selected, self.editing].into_iter().flatten().filter(|i| *i < self.shapes.len()) {
+                if matches!(self.shapes[i].kind, Kind::Bubble(_)) && (to_scr(render::bubble_tip(&self.shapes[i])) - scr).length() < 12.0 {
+                    self.push_undo();
+                    self.selected = Some(i);
+                    self.drag = Drag::Tail(i);
+                    return;
+                }
+            }
+        }
         match self.tool {
             Tool::Select => {
                 if let Some(i) = self.selected.filter(|i| *i < self.shapes.len()) {
                     let s = &self.shapes[i];
-                    if s.has_handles() {
+                    if s.has_handles() && !matches!(s.kind, Kind::Bubble(_)) {
                         for (first, h) in [(true, s.a), (false, s.b)] {
                             if (to_scr(h) - scr).length() < 10.0 {
                                 self.push_undo();
@@ -1314,6 +1357,12 @@ impl Editor {
                 self.drag = Drag::Moving { idx, last: ip };
                 self.dirty = true;
             }
+            Drag::Tail(idx) => {
+                if let Some(s) = self.shapes.get_mut(idx) {
+                    s.style.tail = Some(ip - s.a);
+                    self.dirty = true;
+                }
+            }
             Drag::Handle { idx, first } => {
                 let s = &mut self.shapes[idx];
                 if first {
@@ -1390,7 +1439,7 @@ impl Editor {
                 }
                 self.push_undo();
                 let kind = if self.tool == Tool::Text { Kind::Text(String::new()) } else { Kind::Bubble(String::new()) };
-                self.shapes.push(Shape { kind, a: ip, b: ip, style: self.style.clone() });
+                self.shapes.push(Shape { kind, a: ip, b: ip, style: Style { tail: None, ..self.style.clone() } });
                 self.begin_text(self.shapes.len() - 1);
             }
             // Clic sur un numéro ou un tampon existant : il est sélectionné (double-clic : modifié)
@@ -1441,7 +1490,11 @@ impl Editor {
         let Some(tex_origin) = self.screen_origin(ctx) else { return };
         // Numéro et tampon : saisie sur une ligne, à l'emplacement de la forme (Entrée valide).
         let single = matches!(shape.kind, Kind::Number(..) | Kind::Stamp(_));
-        let pos = tex_origin + if single { shape.rect().min.to_vec2() } else { shape.a.to_vec2() } * self.zoom;
+        let mut pos = tex_origin + if single { shape.rect().min.to_vec2() } else { shape.a.to_vec2() } * self.zoom;
+        if matches!(shape.kind, Kind::Bubble(_)) {
+            // Saisie à l'emplacement du texte (centré dans les bulles ovales).
+            pos += (render::bubble_text_offset(&shape) - vec2(render::TEXT_PAD * 1.2, render::TEXT_PAD * 0.8)) * self.zoom;
+        }
         let font_px = (shape.style.font_size * self.zoom).clamp(10.0, if single { 28.0 } else { f32::INFINITY });
         let c = shape.style.color;
         let before = self.text_buf.clone();

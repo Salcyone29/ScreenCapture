@@ -34,6 +34,12 @@ Depending on the "After capture" setting:
 - **Editor**: the image opens directly for annotation.
 - **Nothing**: the capture is only saved and/or copied.
 The capture can also be copied to the clipboard automatically and saved to the captures folder (Settings).
+## Scrolling capture
+To capture a page taller than the screen (web page, document…): **Scrolling** card on the home page, or the notification area menu.
+- Select the area that scrolls, preferably without the scrollbar.
+- The page scrolls down by itself and the images are stitched together; the capture stops at the bottom of the page, or with **Finish** / `Esc`.
+- Fixed headers and footers are kept only once.
+> On Mac, automatic scrolling needs the **Accessibility** permission (System Settings > Privacy & Security). Without it, scroll the page yourself with the wheel or trackpad, then **Finish**.
 
 # Annotating in the editor
 ![editeur]
@@ -48,6 +54,8 @@ Holding `Shift` while drawing gives 45° angles (arrows, lines) or regular shape
 ## Editing a shape
 - **Select**: Select tool, then click the shape. The handles resize it.
 - **Move**: drag the shape, or use the arrow keys (`Shift` + arrow: 10 pixels).
+- **Move around a zoomed image**: hold the **right button** (or the middle button) and move the mouse; the wheel also scrolls.
+- **Bubbles**: four types (rounded, rectangular, oval, thought) in the right panel. Drag the **tail handle** to point or lengthen the tail without moving the bubble; "Default tail" puts it back.
 - **Duplicate**: `Ctrl + D`, or the "Duplicate" button in the right panel. A duplicated number takes the next number in the series.
 - **Edit the content**: **double-click** a text, bubble, number or stamp (or the "Edit content" button). For a number, type the new value (5, e, IV… depending on the style) then `Enter`.
 - **Color, thickness, text size, fill, shadow, dashes**: right panel, applied to the selected shape, or to the next shapes when nothing is selected.
@@ -102,6 +110,7 @@ In Settings, ScreenCapture can delete old captures automatically:
 - **Editor colors**: edit, add or remove the proposed colors.
 - **Updates**: automatic check and "Check now" button.
 - **Appearance and startup**: language (French, English, Spanish, German or the system language), light or dark theme, accent color, closing to the notification area, starting minimized.
+- **Launch when Windows starts** (or at login on Mac): turn it on or off at any time, even if it was chosen during installation. The switch shows the actual state.
 
 # Updates and portable version
 ## Updates

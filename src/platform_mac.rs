@@ -314,3 +314,69 @@ pub fn relaunch() -> anyhow::Result<()> {
         .spawn()?;
     Ok(())
 }
+
+/// Lancement à l'ouverture de session : agent ~/Library/LaunchAgents/io.github.salcyone29.screencapture.plist.
+fn launch_agent() -> Option<std::path::PathBuf> {
+    let home = std::env::var_os("HOME")?;
+    Some(std::path::Path::new(&home).join("Library/LaunchAgents/io.github.salcyone29.screencapture.plist"))
+}
+
+pub fn launch_at_startup() -> bool {
+    launch_agent().is_some_and(|p| p.exists())
+}
+
+pub fn set_launch_at_startup(on: bool) -> anyhow::Result<()> {
+    let path = launch_agent().ok_or_else(|| anyhow::anyhow!("HOME"))?;
+    if !on {
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+        return Ok(());
+    }
+    let exe = std::env::current_exe()?;
+    let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    let plist = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key>\n\t<string>io.github.salcyone29.screencapture</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>{}</string>\n\t\t<string>--tray</string>\n\t</array>\n\t<key>RunAtLoad</key>\n\t<true/>\n</dict>\n</plist>\n",
+        esc(&exe.display().to_string())
+    );
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::write(&path, plist)?;
+    Ok(())
+}
+
+#[link(name = "ApplicationServices", kind = "framework")]
+extern "C" {
+    fn AXIsProcessTrusted() -> u8;
+    fn CGEventCreateScrollWheelEvent2(source: *const std::ffi::c_void, units: u32, count: u32, w1: i32, w2: i32, w3: i32) -> *mut std::ffi::c_void;
+    fn CGEventPost(tap: u32, event: *mut std::ffi::c_void);
+    fn CFRelease(cf: *const std::ffi::c_void);
+}
+
+/// Capture défilante : simuler la molette demande l'autorisation « Accessibilité ». Sans elle,
+/// l'utilisateur fait défiler lui-même la page.
+pub fn can_simulate_scroll() -> bool {
+    unsafe { AXIsProcessTrusted() != 0 }
+}
+
+pub fn move_cursor(x: i32, y: i32) {
+    let s = scale();
+    let _ = core_graphics::display::CGDisplay::warp_mouse_cursor_position(core_graphics::display::CGPoint::new(x as f64 / s, y as f64 / s));
+}
+
+/// Fait défiler vers le bas le contenu sous le point (x, y) de `notches` crans.
+pub fn scroll_wheel(x: i32, y: i32, notches: i32) {
+    move_cursor(x, y);
+    for _ in 0..notches.max(1) {
+        unsafe {
+            // Unité « ligne », valeur négative : contenu vers le bas (indépendant du sens naturel).
+            let ev = CGEventCreateScrollWheelEvent2(std::ptr::null(), 1, 1, -3, 0, 0);
+            if !ev.is_null() {
+                CGEventPost(0, ev);
+                CFRelease(ev);
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    }
+}

@@ -401,3 +401,24 @@ Autorisation d'enregistrement de l'écran manquante	Screen recording permission 
 Relancer	Restart
 Ouvrir les Réglages	Open Settings
 Sans elle, les captures et les vidéos sont noires. Dans Réglages Système > Confidentialité et sécurité > Enregistrement de l'écran, supprimez l'ancienne entrée ScreenCapture avec le bouton −, ajoutez-la de nouveau avec + (ou activez-la), puis relancez l'application.	Without it, screenshots and videos are black. In System Settings > Privacy & Security > Screen Recording, remove the old ScreenCapture entry with the − button, add it again with + (or turn it on), then restart the application.
+Arrondie	Rounded
+Capture avec défilement : {0} px	Scrolling capture: {0} px
+Capture avec défilement	Scrolling capture
+Défilement automatique • Échap pour arrêter	Automatic scrolling • Esc to stop
+Défilement	Scrolling
+Faites défiler la page vers le bas, puis Terminer	Scroll the page down, then Finish
+Glisser la poignée de la pointe pour l'orienter ou l'allonger.	Drag the tail handle to point or lengthen it.
+Glisser pour tracer • Défiler ou clic droit maintenu : déplacer • ⌘+défiler ou pincer : zoom	Drag to draw • Scroll or hold right-click: pan • ⌘+scroll or pinch: zoom
+Glisser pour tracer • Molette ou clic droit maintenu : déplacer • Ctrl+molette : zoom	Drag to draw • Wheel or hold right-click: pan • Ctrl+wheel: zoom
+Lancer au démarrage de Windows	Launch when Windows starts
+Lancer à l'ouverture de session	Launch at login
+Le lancement au démarrage a été installé pour tous les utilisateurs : seul un administrateur peut le retirer.	Launch at startup was installed for all users: only an administrator can remove it.
+Ovale	Oval
+Page entière	Full page
+Pensée	Thought
+Pointe par défaut	Default tail
+Rectangulaire	Rectangular
+ScreenCapture démarre dans la zone de notification	ScreenCapture starts in the notification area
+Sélectionnez la zone qui défile (sans la barre de défilement)  •  Clic : fenêtre  •  Échap : annuler	Select the scrolling area (without the scrollbar)  •  Click: window  •  Esc: cancel
+Terminer	Finish
+Type de bulle	Bubble type

@@ -179,6 +179,7 @@ impl Workspace {
                     CaptureKind::LastRegion => &hk.last_region,
                     CaptureKind::Video => &hk.video,
                     CaptureKind::Delayed => return crate::i18n::trf("Après {0} s", &[&settings.delay_seconds]),
+                    CaptureKind::Scrolling => return crate::i18n::tr("Page entière").into(),
                 };
                 let ok = hotkeys_ok.iter().find(|(c, _)| *c == k).map(|(_, ok)| *ok).unwrap_or(false);
                 if s.is_empty() {
@@ -198,6 +199,7 @@ impl Workspace {
                     (CaptureKind::LastRegion, ICON_CROP_FREE, crate::i18n::tr("Dernière zone"), false),
                     (CaptureKind::Delayed, ICON_TIMER, crate::i18n::tr("Différée"), false),
                     (CaptureKind::Video, ICON_VIDEOCAM, crate::i18n::tr("Vidéo"), false),
+                    (CaptureKind::Scrolling, ICON_SWIPE_VERTICAL, crate::i18n::tr("Défilement"), false),
                 ];
                 for (kind, icon, title, emph) in cards {
                     if theme::action_card(ui, icon, title, &shortcut(kind), emph).clicked() {

@@ -98,6 +98,33 @@ pub struct Style {
     pub shadow: bool,
     pub dashed: bool,
     pub font_size: f32,
+    /// Forme de la bulle de texte.
+    pub bubble: BubbleKind,
+    /// Pointe de la bulle, relative au coin haut gauche de la bulle (`None` : position par défaut).
+    pub tail: Option<Vec2>,
+}
+
+/// Forme d'une bulle de texte.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BubbleKind {
+    #[default]
+    Rounded,
+    Rectangle,
+    Oval,
+    Thought,
+}
+
+impl BubbleKind {
+    pub const ALL: [BubbleKind; 4] = [BubbleKind::Rounded, BubbleKind::Rectangle, BubbleKind::Oval, BubbleKind::Thought];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            BubbleKind::Rounded => crate::i18n::tr("Arrondie"),
+            BubbleKind::Rectangle => crate::i18n::tr("Rectangulaire"),
+            BubbleKind::Oval => crate::i18n::tr("Ovale"),
+            BubbleKind::Thought => crate::i18n::tr("Pensée"),
+        }
+    }
 }
 
 impl Style {
@@ -117,7 +144,7 @@ impl Style {
 
 impl Default for Style {
     fn default() -> Self {
-        Self { color: [229, 57, 53, 255], width: 4.0, filled: false, shadow: true, dashed: false, font_size: 24.0 }
+        Self { color: [229, 57, 53, 255], width: 4.0, filled: false, shadow: true, dashed: false, font_size: 24.0, bubble: BubbleKind::Rounded, tail: None }
     }
 }
 

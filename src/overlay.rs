@@ -16,6 +16,8 @@ use crate::theme::{self, palette};
 pub enum Purpose {
     Image,
     Video,
+    /// Zone de la capture avec défilement.
+    Scroll,
 }
 
 pub enum OverlayResult {
@@ -212,6 +214,7 @@ impl Overlay {
             let help = match self.purpose {
                 Purpose::Image => crate::i18n::tr("Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler"),
                 Purpose::Video => crate::i18n::tr("Sélectionnez la zone à enregistrer  •  Clic : fenêtre  •  Entrée : écran entier  •  Échap : annuler"),
+                Purpose::Scroll => crate::i18n::tr("Sélectionnez la zone qui défile (sans la barre de défilement)  •  Clic : fenêtre  •  Échap : annuler"),
             };
             let g = painter.layout_no_wrap(help.to_string(), FontId::proportional(13.5), p.inverse_on_surface);
             // Le bandeau (et le bouton du son) ne doit pas cacher ce qu'on vise : en haut de l'écran,
