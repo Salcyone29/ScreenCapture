@@ -73,6 +73,9 @@ impl Window {
         }
     }
 
+    /// Molette pendant la sélection : non utilisée sur macOS.
+    pub fn set_click_through(self, _on: bool) {}
+
     pub fn is_minimized(self) -> bool {
         self.ns_window().is_some_and(|(w, _)| w.isMiniaturized())
     }

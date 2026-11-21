@@ -2119,12 +2119,18 @@ impl App {
     fn overlay_viewport(&mut self, ctx: &egui::Context) {
         let Some(origin) = self.overlay.as_ref().map(|o| o.origin) else { return };
         let result = ctx.show_viewport_immediate(egui::ViewportId::from_hash_of("sc_overlay"), floating_builder(TITLE_OVERLAY, origin), |vctx, _| {
-            self.overlay_win.sync(TITLE_OVERLAY, origin, true, false, false);
+            // Exclue des captures : la molette pendant la sélection capture la page en dessous.
+            self.overlay_win.sync(TITLE_OVERLAY, origin, true, true, false);
             let closed = vctx.input(|i| i.viewport().close_requested());
-            match self.overlay.as_mut() {
+            let r = match self.overlay.as_mut() {
                 Some(o) if !closed => o.ui(vctx),
                 _ => OverlayResult::Cancel,
+            };
+            // Prolongation à la molette : la page sous la sélection doit recevoir la molette.
+            if let (Some(w), Some(o)) = (self.overlay_win.win, self.overlay.as_ref()) {
+                w.set_click_through(o.extending());
             }
+            r
         });
         match result {
             OverlayResult::Pending => {}
@@ -2133,6 +2139,10 @@ impl App {
                 self.overlay = None;
                 self.end_capture();
                 self.toast(crate::i18n::trf("Couleur {0} copiée", &[&hex]));
+            }
+            OverlayResult::Extended(img) => {
+                self.overlay = None;
+                self.finish_capture(ctx, img);
             }
             OverlayResult::Cancel => {
                 crate::diag::log("sélection annulée");

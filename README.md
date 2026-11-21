@@ -6,6 +6,7 @@ Outil de capture d'écran, d'annotation et d'enregistrement vidéo écrit en Rus
 
 - Capture de zone, plein écran, fenêtre, dernière zone et capture différée
 - Capture avec défilement : page plus haute que l'écran, assemblée automatiquement
+- Capture de zone prolongée vers le bas à la molette, sans relâcher le bouton (Windows)
 - Coller une image (Ctrl+V) ou glisser des fichiers dans l'espace de travail : ils sont ajoutés au dossier des captures
 - Éditeur : flèches, formes, texte, bulles, surligneur, flou, loupe, numérotation (1, 01, A, a, I, i, α), tampons, recadrage, découpe de bande (droite ou zigzag), déplacement de zone, pipette, nuancier personnalisable
 - Reconnaissance de texte (OCR)

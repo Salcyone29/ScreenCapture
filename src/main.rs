@@ -48,7 +48,8 @@ fn main() -> eframe::Result<()> {
         return Ok(());
     }
     let settings = settings::Settings::load();
-    diag::set_enabled(settings.diagnostic);
+    // SC_DIAG : journal forcé (essais).
+    diag::set_enabled(settings.diagnostic || std::env::var_os("SC_DIAG").is_some());
     i18n::set_language(settings.language);
     diag::log(&format!("langue : {:?} ({:?} dans les paramètres)", i18n::current(), settings.language));
     // macOS : autorisation d'enregistrer l'écran. Absente (ou liée à une ancienne signature), la

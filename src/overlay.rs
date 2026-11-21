@@ -24,7 +24,28 @@ pub enum OverlayResult {
     Pending,
     Cancel,
     Selected(Rect),
+    /// Zone prolongée vers le bas à la molette pendant la sélection : image assemblée.
+    Extended(RgbaImage),
     CopyColor(String),
+}
+
+/// Zone prolongée à la molette : la page sous la sélection défile et chaque nouvelle image est
+/// assemblée sous la précédente (comme la capture avec défilement).
+struct Extend {
+    /// Zone de l'écran qui défile (la sélection, figée dès le premier cran).
+    region: Rect,
+    /// Fenêtre qui reçoit la molette.
+    target: isize,
+    stitch: crate::scroll::Stitcher,
+    /// Crans de molette pas encore transmis.
+    queued: i32,
+    /// Crans transmis à chaque fois (ajusté pour garder un recouvrement entre deux images).
+    per_cycle: i32,
+    /// Capture en cours après les derniers crans transmis.
+    pending: Option<std::sync::mpsc::Receiver<anyhow::Result<RgbaImage>>>,
+    /// Dernière capture demandée : la page est recapturée régulièrement, car la molette peut
+    /// aussi l'atteindre directement (sélection transparente à la souris).
+    last_capture: std::time::Instant,
 }
 
 pub struct Overlay {
@@ -46,6 +67,7 @@ pub struct Overlay {
     /// Emplacement du bandeau d'aide (« haut », « bas » ou « masqué »), pour le journal.
     pub help_position: &'static str,
     frames: u32,
+    extend: Option<Extend>,
 }
 
 const MAG_PIXELS: i32 = 15;
@@ -68,6 +90,7 @@ impl Overlay {
             audio_chip: None,
             help_position: "haut",
             frames: 0,
+            extend: None,
         }
     }
 
@@ -83,6 +106,100 @@ impl Overlay {
             .iter()
             .find(|w| w.rect.contains(x, y))
             .and_then(|w| w.rect.intersect(&self.origin))
+    }
+
+    /// Zone en cours de prolongation à la molette (la sélection doit laisser passer la souris).
+    pub fn extending(&self) -> bool {
+        self.extend.is_some()
+    }
+
+    /// Premier cran : figer la zone et trouver la fenêtre à faire défiler ; ensuite, ajouter les crans.
+    fn start_or_queue_extend(&mut self, r: Rect, notches: i32) {
+        if let Some(e) = self.extend.as_mut() {
+            e.queued += notches;
+            return;
+        }
+        let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
+        let Some(target) = capture::wheel_target(cx, cy) else {
+            crate::diag::log("sélection prolongée : aucune fenêtre sous la zone");
+            return;
+        };
+        let Some(first) = capture::crop_virtual(&self.image, self.origin, r) else { return };
+        crate::diag::log(&format!("sélection prolongée à la molette {r:?}"));
+        self.extend = Some(Extend {
+            region: r,
+            target,
+            stitch: crate::scroll::Stitcher::new(first),
+            queued: notches,
+            per_cycle: 3,
+            pending: None,
+            last_capture: std::time::Instant::now(),
+        });
+    }
+
+    /// Transmet les crans en attente et assemble les images reçues (sans bloquer l'affichage).
+    fn pump_extend(&mut self, ctx: &egui::Context) {
+        let Some(e) = self.extend.as_mut() else { return };
+        if let Some(rx) = &e.pending {
+            match rx.try_recv() {
+                Ok(Ok(img)) => {
+                    e.pending = None;
+                    if let Some(s) = e.stitch.push(img.clone()) {
+                        if s.rows > 0 {
+                            // Environ 45 % de la zone par envoi, pour garder un recouvrement.
+                            let sent = e.per_cycle.max(1) as f32;
+                            let per_notch = (s.rows as f32 / sent).max(1.0);
+                            e.per_cycle = ((e.region.h as f32 * 0.45 / per_notch) as i32).clamp(1, 10);
+                        }
+                    }
+                    // Afficher la page telle qu'elle est maintenant sous la zone.
+                    let (ox, oy) = ((e.region.x - self.origin.x) as i64, (e.region.y - self.origin.y) as i64);
+                    image::imageops::replace(&mut self.image, &img, ox, oy);
+                    if let Some(t) = self.texture.as_mut() {
+                        t.update(ctx, "overlay", &self.image, TextureOptions::NEAREST);
+                    }
+                }
+                Ok(Err(err)) => {
+                    e.pending = None;
+                    crate::diag::log(&format!("sélection prolongée : capture impossible : {err}"));
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {}
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => e.pending = None,
+            }
+        }
+        let periodic = e.last_capture.elapsed() > std::time::Duration::from_millis(150);
+        if e.pending.is_none() && (e.queued > 0 || periodic) {
+            let r = e.region;
+            if e.queued > 0 {
+                let send = e.queued.min(e.per_cycle);
+                e.queued -= send;
+                e.per_cycle = send;
+                capture::post_wheel(e.target, r.x + r.w / 2, r.y + r.h / 2, send);
+            }
+            e.last_capture = std::time::Instant::now();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let ctx2 = ctx.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                let _ = tx.send(crate::scroll::capture_settled(r));
+                ctx2.request_repaint();
+            });
+            e.pending = Some(rx);
+        }
+        ctx.request_repaint_after(std::time::Duration::from_millis(30));
+    }
+
+    /// Bouton relâché : dernière image en attente, puis image assemblée.
+    fn finish_extend(&mut self) -> RgbaImage {
+        let mut e = self.extend.take().expect("zone prolongée");
+        if let Some(rx) = e.pending.take() {
+            if let Ok(Ok(img)) = rx.recv_timeout(std::time::Duration::from_secs(2)) {
+                e.stitch.push(img);
+            }
+        }
+        let img = e.stitch.finish();
+        crate::diag::log(&format!("sélection prolongée : {}×{}", img.width(), img.height()));
+        img
     }
 
     fn monitor_at(&self, x: i32, y: i32) -> Rect {
@@ -127,6 +244,20 @@ impl Overlay {
         // (fenêtre de l'espace de travail ou garée hors écran) tant que la souris n'a pas bougé,
         // ce qui faisait apparaître la loupe ailleurs pendant les premières images.
         let cursor = capture::cursor_pos();
+        // Crans de molette vers le bas reçus pendant cette image.
+        let wheel: i32 = ctx.input(|i| {
+            i.events
+                .iter()
+                .map(|e| match e {
+                    egui::Event::MouseWheel { unit, delta, .. } => match unit {
+                        egui::MouseWheelUnit::Line => (-delta.y).round() as i32,
+                        egui::MouseWheelUnit::Point => (-delta.y / 40.0).round() as i32,
+                        egui::MouseWheelUnit::Page => (-delta.y * 10.0).round() as i32,
+                    },
+                    _ => 0,
+                })
+                .sum()
+        });
 
         if esc || right {
             return OverlayResult::Cancel;
@@ -148,13 +279,26 @@ impl Overlay {
                     None => cursor,
                 });
             }
-            if down {
+            // Molette en gardant le bouton appuyé : la page sous la zone défile et la zone
+            // s'agrandit vers le bas.
+            if down && wheel > 0 && self.purpose == Purpose::Image {
+                if let Some(r) = self.current.filter(|r| r.w >= 16 && r.h >= 16) {
+                    self.start_or_queue_extend(r, wheel);
+                }
+            }
+            self.pump_extend(ctx);
+            if down && self.extend.is_none() {
                 if let Some(s) = self.drag_start {
                     if (cursor.0 - s.0).abs() > 3 || (cursor.1 - s.1).abs() > 3 {
                         let r = Rect::from_points(s.0, s.1, cursor.0, cursor.1);
                         self.current = r.intersect(&self.origin);
                     }
                 }
+            }
+            if released && self.drag_start.is_some() && self.extend.is_some() {
+                self.drag_start = None;
+                self.current = None;
+                return OverlayResult::Extended(self.finish_extend());
             }
             if released && self.drag_start.is_some() {
                 self.drag_start = None;
@@ -187,7 +331,10 @@ impl Overlay {
                             painter.circle(c, 4.0, Color32::WHITE, Stroke::new(2.0_f32, accent));
                         }
                     }
-                    let label = format!("{} × {}", r.w, r.h);
+                    let label = match &self.extend {
+                        Some(e) => format!("{} × {}  ↓", r.w, e.stitch.height()),
+                        None => format!("{} × {}", r.w, r.h),
+                    };
                     let chip_pos = if s.min.y > 34.0 { s.left_top() + vec2(0.0, -8.0) } else { s.left_top() + vec2(8.0, 30.0) };
                     let galley = painter.layout_no_wrap(label, theme::medium(13.0), p.on_primary);
                     let chip = ERect::from_min_size(chip_pos - vec2(0.0, 26.0), galley.size() + vec2(20.0, 10.0));
@@ -212,6 +359,7 @@ impl Overlay {
             // Bandeau d'aide (en haut du moniteur courant).
             let mon = rect_pt(self.monitor_at(cursor.0, cursor.1));
             let help = match self.purpose {
+                Purpose::Image if cfg!(windows) => crate::i18n::tr("Glisser : zone  •  Molette sans relâcher : prolonger vers le bas  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler"),
                 Purpose::Image => crate::i18n::tr("Glisser : zone  •  Clic : fenêtre  •  Entrée : écran entier  •  C : copier la couleur  •  Échap : annuler"),
                 Purpose::Video => crate::i18n::tr("Sélectionnez la zone à enregistrer  •  Clic : fenêtre  •  Entrée : écran entier  •  Échap : annuler"),
                 Purpose::Scroll => crate::i18n::tr("Sélectionnez la zone qui défile (sans la barre de défilement)  •  Clic : fenêtre  •  Échap : annuler"),

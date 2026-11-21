@@ -190,3 +190,72 @@ pub fn foreground_window_rect() -> Option<Rect> {
         window_bounds(hwnd).and_then(|r| r.intersect(&virtual_screen()))
     }
 }
+
+/// Fenêtre d'une autre application sous le point (x, y), la plus profonde (zone de contenu) :
+/// destinataire de la molette pendant la sélection, qui recouvre tout l'écran.
+pub fn wheel_target(x: i32, y: i32) -> Option<isize> {
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::Graphics::Gdi::ScreenToClient;
+    use windows::Win32::UI::WindowsAndMessaging::{ChildWindowFromPointEx, CWP_SKIPINVISIBLE, CWP_SKIPTRANSPARENT};
+    struct Find {
+        x: i32,
+        y: i32,
+        found: Option<HWND>,
+    }
+    unsafe extern "system" fn cb(hwnd: HWND, data: LPARAM) -> BOOL {
+        let f = &mut *(data.0 as *mut Find);
+        if !IsWindowVisible(hwnd).as_bool() || IsIconic(hwnd).as_bool() {
+            return BOOL(1);
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == GetCurrentProcessId() {
+            return BOOL(1);
+        }
+        let mut cloaked = 0u32;
+        let _ = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &mut cloaked as *mut _ as *mut _, 4);
+        if cloaked != 0 {
+            return BOOL(1);
+        }
+        let ex = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32;
+        // Fenêtres transparentes aux clics (bandeaux, effets) : la molette les traverse.
+        if ex & windows::Win32::UI::WindowsAndMessaging::WS_EX_TRANSPARENT.0 != 0 {
+            return BOOL(1);
+        }
+        if window_bounds(hwnd).is_some_and(|r| r.contains(f.x, f.y)) {
+            f.found = Some(hwnd);
+            return BOOL(0);
+        }
+        BOOL(1)
+    }
+    let mut f = Find { x, y, found: None };
+    unsafe {
+        let _ = EnumWindows(Some(cb), LPARAM(&mut f as *mut _ as isize));
+        let mut hwnd = f.found?;
+        // Descendre jusqu'à la fenêtre enfant sous le point.
+        for _ in 0..16 {
+            let mut pt = POINT { x, y };
+            let _ = ScreenToClient(hwnd, &mut pt);
+            let child = ChildWindowFromPointEx(hwnd, pt, CWP_SKIPINVISIBLE | CWP_SKIPTRANSPARENT);
+            if child.0.is_null() || child == hwnd {
+                break;
+            }
+            hwnd = child;
+        }
+        let mut class = [0u16; 128];
+        let n = windows::Win32::UI::WindowsAndMessaging::GetClassNameW(hwnd, &mut class);
+        crate::diag::log(&format!("molette : fenêtre {:#x} « {} »", hwnd.0 as isize, String::from_utf16_lossy(&class[..n.max(0) as usize])));
+        Some(hwnd.0 as isize)
+    }
+}
+
+/// Fait défiler vers le bas la fenêtre `target` de `notches` crans, comme la molette au point (x, y).
+pub fn post_wheel(target: isize, x: i32, y: i32, notches: i32) {
+    use windows::Win32::Foundation::WPARAM;
+    use windows::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_MOUSEWHEEL};
+    let delta = (-120 * notches.max(1)) as i16 as u16 as usize;
+    let lparam = ((y as u16 as u32) << 16 | (x as u16 as u32)) as i32 as isize;
+    unsafe {
+        let _ = PostMessageW(HWND(target as *mut _), WM_MOUSEWHEEL, WPARAM(delta << 16), LPARAM(lparam));
+    }
+}

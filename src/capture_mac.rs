@@ -230,3 +230,10 @@ pub fn foreground_window_rect() -> Option<Rect> {
     let screen = virtual_screen();
     visible_windows().into_iter().find_map(|w| w.rect.intersect(&screen))
 }
+
+/// Molette pendant la sélection : non disponible sur macOS (la sélection reçoit la molette).
+pub fn wheel_target(_x: i32, _y: i32) -> Option<isize> {
+    None
+}
+
+pub fn post_wheel(_target: isize, _x: i32, _y: i32, _notches: i32) {}

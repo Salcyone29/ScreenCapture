@@ -61,6 +61,26 @@ impl Window {
         }
     }
 
+    /// Fenêtre « transparente » à la souris : clics et molette atteignent la fenêtre en dessous
+    /// (elle reste affichée).
+    pub fn set_click_through(self, on: bool) {
+        use windows::Win32::UI::WindowsAndMessaging::{SetLayeredWindowAttributes, LWA_ALPHA, WS_EX_LAYERED, WS_EX_TRANSPARENT};
+        if !self.is_valid() {
+            return;
+        }
+        unsafe {
+            let ex = GetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE) as u32;
+            let flags = WS_EX_LAYERED.0 | WS_EX_TRANSPARENT.0;
+            let new = if on { ex | flags } else { ex & !flags };
+            if new != ex {
+                SetWindowLongPtrW(self.hwnd(), GWL_EXSTYLE, new as isize);
+                if on {
+                    let _ = SetLayeredWindowAttributes(self.hwnd(), windows::Win32::Foundation::COLORREF(0), 255, LWA_ALPHA);
+                }
+            }
+        }
+    }
+
     pub fn is_minimized(self) -> bool {
         use windows::Win32::UI::WindowsAndMessaging::IsIconic;
         self.is_valid() && unsafe { IsIconic(self.hwnd()) }.as_bool()

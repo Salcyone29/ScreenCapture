@@ -24,6 +24,7 @@ Seis tipos de captura:
 ## Elegir la zona
 ![selection]
 - **Arrastrar** para dibujar la zona; al soltar se captura.
+- **Ampliar hacia abajo** (Windows): sin soltar el botón, girar la **rueda**: la página o el documento bajo la zona se desplaza y la zona crece en la misma medida (la altura total se muestra con ↓). Soltar el botón para capturar.
 - **Hacer clic** en una ventana para capturarla entera (se resalta al pasar el ratón).
 - `Intro` captura la pantalla entera, `Esc` cancela.
 - `C` copia el color bajo el cursor (código hexadecimal); la lupa muestra los píxeles ampliados.

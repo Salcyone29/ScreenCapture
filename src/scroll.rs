@@ -166,7 +166,7 @@ pub struct Progress {
 }
 
 /// Capture qui ne change plus (la page a fini de défiler) : deux images identiques de suite.
-fn capture_settled(r: Rect) -> anyhow::Result<RgbaImage> {
+pub fn capture_settled(r: Rect) -> anyhow::Result<RgbaImage> {
     let mut last = capture::capture_rect(r, false)?;
     for _ in 0..5 {
         std::thread::sleep(Duration::from_millis(90));
@@ -377,5 +377,26 @@ mod tests {
         eprintln!("A LA MAIN : {}", progress.manual.load(Ordering::SeqCst));
         img.save(std::env::var("SC_SCROLL_OUT").unwrap()).unwrap();
         eprintln!("RESULTAT {}x{} pour {}x{}", img.width(), img.height(), r.w, r.h);
+    }
+
+    /// Essai réel : molette postée à la fenêtre sous le point `SC_WHEEL_AT` (« x y »).
+    #[test]
+    #[ignore]
+    fn molette_postee() {
+        #[cfg(windows)]
+        unsafe {
+            use windows::Win32::UI::HiDpi::{SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2};
+            let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+        let v: Vec<i32> = std::env::var("SC_WHEEL_AT").unwrap().split_whitespace().map(|x| x.parse().unwrap()).collect();
+        let r = Rect::new(v[0] - 200, v[1] - 200, 400, 400);
+        let before = capture::capture_rect(r, false).unwrap();
+        let target = capture::wheel_target(v[0], v[1]).expect("fenêtre sous le point");
+        capture::post_wheel(target, v[0], v[1], 3);
+        std::thread::sleep(Duration::from_millis(600));
+        let after = capture::capture_rect(r, false).unwrap();
+        let shift = find_shift(&before, &after);
+        eprintln!("CIBLE {target:#x} DECALAGE {shift:?}");
+        assert!(shift.is_some_and(|s| s.rows > 0));
     }
 }
