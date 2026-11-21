@@ -24,7 +24,7 @@ Six kinds of capture:
 ## Choosing the area
 ![selection]
 - **Drag** to draw the area; releasing takes the capture.
-- **Extend downwards** (Windows): without releasing the button, turn the **wheel**: the page or document under the area scrolls and the area grows accordingly (the total height is shown with ↓). Release the button to capture.
+- **Extend downwards** (Windows): after drawing the area, turn the **wheel without releasing the button**. The selection gives way to the page, which scrolls normally inside a fixed frame; everything that passes through the frame is stitched together. Release the button to capture.
 - **Click** a window to capture all of it (it is outlined on hover).
 - `Enter` captures the whole screen, `Esc` cancels.
 - `C` copies the color under the cursor (hex code); the magnifier shows enlarged pixels.

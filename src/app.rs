@@ -300,6 +300,11 @@ pub struct App {
     scrolling: Option<crate::scroll::Progress>,
     scrollbar_rect: Rect,
     scrollbar_win: Floating,
+    /// Capture défilante lancée à la molette pendant la sélection (bouton maintenu).
+    scroll_held: bool,
+    scroll_region: Rect,
+    /// Cadre autour de la zone (quatre bandes hors de la zone, transparentes à la souris).
+    scroll_frame: [Floating; 4],
     page: Page,
     settings: Settings,
     workspace: Workspace,
@@ -504,6 +509,9 @@ impl App {
             scrolling: None,
             scrollbar_rect: Rect::new(0, 0, 1, 1),
             scrollbar_win: Floating::default(),
+            scroll_held: false,
+            scroll_region: Rect::new(0, 0, 1, 1),
+            scroll_frame: Default::default(),
             page: Page::Home,
             workspace: Workspace::new(&ctx),
             help: crate::help::Help::default(),
@@ -2119,19 +2127,20 @@ impl App {
     fn overlay_viewport(&mut self, ctx: &egui::Context) {
         let Some(origin) = self.overlay.as_ref().map(|o| o.origin) else { return };
         let result = ctx.show_viewport_immediate(egui::ViewportId::from_hash_of("sc_overlay"), floating_builder(TITLE_OVERLAY, origin), |vctx, _| {
-            // Exclue des captures : la molette pendant la sélection capture la page en dessous.
-            self.overlay_win.sync(TITLE_OVERLAY, origin, true, true, false);
+            self.overlay_win.sync(TITLE_OVERLAY, origin, true, false, false);
             let closed = vctx.input(|i| i.viewport().close_requested());
-            let r = match self.overlay.as_mut() {
+            match self.overlay.as_mut() {
                 Some(o) if !closed => o.ui(vctx),
                 _ => OverlayResult::Cancel,
-            };
-            // Prolongation à la molette : la page sous la sélection doit recevoir la molette.
-            if let (Some(w), Some(o)) = (self.overlay_win.win, self.overlay.as_ref()) {
-                w.set_click_through(o.extending());
             }
-            r
         });
+        // Sélection terminée : la masquer tout de suite (DWM). Sinon sa fenêtre, qui couvre tous
+        // les écrans, reste noire le temps d'être détruite.
+        if !matches!(result, OverlayResult::Pending) {
+            if let Some(w) = self.overlay_win.win {
+                w.cloak(true);
+            }
+        }
         match result {
             OverlayResult::Pending => {}
             OverlayResult::CopyColor(hex) => {
@@ -2140,9 +2149,10 @@ impl App {
                 self.end_capture();
                 self.toast(crate::i18n::trf("Couleur {0} copiée", &[&hex]));
             }
-            OverlayResult::Extended(img) => {
-                self.overlay = None;
-                self.finish_capture(ctx, img);
+            OverlayResult::ScrollFrom(r) => {
+                crate::diag::log(&format!("zone {r:?} prolongée à la molette"));
+                let first = self.overlay.take().and_then(|o| capture::crop_virtual(&o.image, o.origin, r));
+                self.start_scroll_capture(ctx, r, first);
             }
             OverlayResult::Cancel => {
                 crate::diag::log("sélection annulée");
@@ -2161,7 +2171,7 @@ impl App {
                             None => self.end_capture(),
                         }
                     }
-                    Purpose::Scroll => self.start_scroll_capture(ctx, r),
+                    Purpose::Scroll => self.start_scroll_capture(ctx, r, None),
                     Purpose::Video => {
                         // Choix « avec / sans le son » fait dans la sélection : gardé pour la suite.
                         if let Some(a) = ov.audio {
@@ -2332,9 +2342,15 @@ impl App {
     /// Barre d'enregistrement : fenêtre flottante exclue de la vidéo.
     // ------------------------------------------------------------------ capture défilante
 
-    fn start_scroll_capture(&mut self, ctx: &egui::Context, region: Rect) {
+    /// `held_first` : zone dessinée en tournant la molette, bouton maintenu (fin au relâchement),
+    /// avec son image au moment où elle a été dessinée.
+    fn start_scroll_capture(&mut self, ctx: &egui::Context, region: Rect, held_first: Option<RgbaImage>) {
+        let held = held_first.is_some();
         let progress = crate::scroll::Progress::default();
         self.scrolling = Some(progress.clone());
+        self.scroll_held = held;
+        self.scroll_region = region;
+        self.scroll_frame = Default::default();
         self.busy = true;
         self.busy_since = Instant::now();
         // Barre « Terminer » au-dessus de la zone (sinon dessous, sinon en haut de l'écran) : elle
@@ -2355,7 +2371,7 @@ impl App {
         let tx = self.tx.clone();
         let ctx2 = ctx.clone();
         std::thread::spawn(move || {
-            let r = std::panic::catch_unwind(move || crate::scroll::run(region, progress));
+            let r = std::panic::catch_unwind(move || crate::scroll::run(region, progress, held, if held { 1 } else { 0 }, held_first));
             let ev = match r {
                 Ok(Ok(img)) => AppEvent::ScrollDone(Ok(img)),
                 Ok(Err(e)) => AppEvent::ScrollDone(Err(e.to_string())),
@@ -2380,6 +2396,7 @@ impl App {
             let Some(progress) = self.scrolling.clone() else { return };
             let height = progress.height.load(std::sync::atomic::Ordering::SeqCst);
             let auto = !progress.manual.load(std::sync::atomic::Ordering::SeqCst);
+            let held = self.scroll_held;
             egui::CentralPanel::default()
                 .frame(egui::Frame::new().fill(p.surface_high).inner_margin(Margin::symmetric(14, 8)))
                 .show(vctx, |ui| {
@@ -2387,7 +2404,9 @@ impl App {
                         ui.spinner();
                         ui.vertical(|ui| {
                             ui.label(egui::RichText::new(crate::i18n::trf("Capture avec défilement : {0} px", &[&height])).font(theme::medium(14.0)).color(p.on_surface));
-                            let hint = if auto {
+                            let hint = if held {
+                                crate::i18n::tr("Tournez la molette • Relâchez le bouton pour capturer")
+                            } else if auto {
                                 crate::i18n::tr("Défilement automatique • Bouger la souris pour défiler vous-même • Échap pour arrêter")
                             } else {
                                 crate::i18n::tr("Faites défiler la page vers le bas, sans aller trop vite, puis Terminer")
@@ -2403,6 +2422,28 @@ impl App {
                 });
             vctx.request_repaint_after(Duration::from_millis(200));
         });
+        // Cadre de la zone : quatre bandes juste à l'extérieur (jamais dans l'image), que la
+        // souris et la molette traversent.
+        let r = self.scroll_region;
+        let t = 3;
+        let bands = [
+            Rect::new(r.x - t, r.y - t, r.w + 2 * t, t),
+            Rect::new(r.x - t, r.y + r.h, r.w + 2 * t, t),
+            Rect::new(r.x - t, r.y, t, r.h),
+            Rect::new(r.x + r.w, r.y, t, r.h),
+        ];
+        for (i, band) in bands.into_iter().enumerate() {
+            let title = format!("ScreenCapture — Cadre {i}");
+            let id = egui::ViewportId::from_hash_of(("sc_scrollframe", i));
+            ctx.show_viewport_immediate(id, floating_builder(&title, band), |vctx, _| {
+                self.scroll_frame[i].sync(&title, band, false, false, false);
+                if let Some(w) = self.scroll_frame[i].win {
+                    w.set_click_through(true);
+                }
+                let p = palette(vctx);
+                egui::CentralPanel::default().frame(egui::Frame::new().fill(p.primary)).show(vctx, |_| {});
+            });
+        }
     }
 
     fn recording_bar_viewport(&mut self, ctx: &egui::Context) {

@@ -24,7 +24,7 @@ Sechs Aufnahmearten:
 ## Den Bereich wählen
 ![selection]
 - **Ziehen**, um den Bereich zu zeichnen; beim Loslassen wird aufgenommen.
-- **Nach unten erweitern** (Windows): ohne die Taste loszulassen das **Mausrad** drehen: Die Seite oder das Dokument unter dem Bereich scrollt und der Bereich wächst entsprechend (die Gesamthöhe wird mit ↓ angezeigt). Taste loslassen, um aufzunehmen.
+- **Nach unten erweitern** (Windows): nach dem Zeichnen des Bereichs das **Mausrad drehen, ohne die Taste loszulassen**. Die Auswahl gibt die Seite frei, die in einem festen Rahmen normal scrollt; alles, was durch den Rahmen läuft, wird zusammengesetzt. Taste loslassen, um aufzunehmen.
 - Auf ein Fenster **klicken**, um es ganz aufzunehmen (es wird beim Überfahren umrahmt).
 - `Eingabe` nimmt den ganzen Bildschirm auf, `Esc` bricht ab.
 - `C` kopiert die Farbe unter dem Mauszeiger (Hex-Code); die Lupe zeigt vergrößerte Pixel.

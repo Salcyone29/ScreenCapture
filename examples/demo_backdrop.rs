@@ -1,18 +1,21 @@
 //! Fond de démonstration plein écran (captures d'écran de l'aide) : affiche une image générique
 //! sur tout l'écran principal pour que rien du bureau réel n'apparaisse.
 //!
-//! Usage : `demo_backdrop <image.png>`
+//! Usage : `demo_backdrop <image.png> [x y]`
 use eframe::egui;
 
 fn main() -> eframe::Result<()> {
     let path = std::env::args().nth(1).expect("image de fond");
     let img = image::open(&path).expect("image lisible").to_rgba8();
+    // Écran voulu : un point de cet écran (« x y », facultatif ; écran principal par défaut).
+    let at: Vec<f32> = std::env::args().skip(2).filter_map(|a| a.parse().ok()).collect();
+    let pos = if at.len() == 2 { [at[0], at[1]] } else { [0.0, 0.0] };
     eframe::run_native(
         "Fond de démonstration",
         eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
                 .with_title("Fond de démonstration")
-                .with_position([0.0, 0.0])
+                .with_position(pos)
                 .with_fullscreen(true)
                 .with_decorations(false),
             ..Default::default()

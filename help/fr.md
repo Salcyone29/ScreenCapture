@@ -24,7 +24,7 @@ Six types de capture :
 ## Choisir la zone
 ![selection]
 - **Glisser** pour dessiner la zone ; relâcher capture.
-- **Prolonger vers le bas** (Windows) : sans relâcher le bouton, tourner la **molette** : la page ou le document sous la zone défile et la zone s'agrandit d'autant (la hauteur totale s'affiche avec ↓). Relâcher le bouton pour capturer.
+- **Prolonger vers le bas** (Windows) : après avoir dessiné la zone, tourner la **molette sans relâcher le bouton**. La sélection laisse place à la page, qui défile normalement dans un cadre fixe ; tout ce qui passe dans le cadre est assemblé. Relâcher le bouton pour capturer.
 - **Cliquer** sur une fenêtre pour la capturer entière (elle est encadrée au survol).
 - `Entrée` capture l'écran entier, `Échap` annule.
 - `C` copie la couleur sous le curseur (code hexadécimal) ; la loupe montre les pixels agrandis.

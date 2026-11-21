@@ -13,7 +13,7 @@ pub(crate) mod imp;
 #[path = "capture_mac.rs"]
 pub(crate) mod imp;
 
-pub use imp::{capture_rect, cursor_pos, foreground_window_rect, monitors, post_wheel, virtual_screen, visible_windows, wheel_target, work_area_at};
+pub use imp::{capture_rect, cursor_pos, foreground_window_rect, monitors, virtual_screen, visible_windows, work_area_at};
 
 /// Rectangle en pixels de l'écran, coordonnées du bureau virtuel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -735,6 +735,22 @@ pub fn move_cursor(x: i32, y: i32) {
     let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::SetCursorPos(x, y) };
 }
 
+/// Bouton gauche de la souris enfoncé (état physique, quelle que soit la fenêtre).
+pub fn left_button_down() -> bool {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+    unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000 != 0 }
+}
+
+/// Crans de molette vers le bas, là où se trouve le pointeur.
+pub fn send_wheel(notches: i32) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_WHEEL, MOUSEINPUT};
+    for _ in 0..notches.clamp(0, 10) {
+        let input = INPUT { r#type: INPUT_MOUSE, Anonymous: INPUT_0 { mi: MOUSEINPUT { dx: 0, dy: 0, mouseData: (-120i32) as u32, dwFlags: MOUSEEVENTF_WHEEL, time: 0, dwExtraInfo: 0 } } };
+        unsafe { SendInput(&[input], std::mem::size_of::<INPUT>() as i32) };
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    }
+}
+
 /// Fait défiler vers le bas la fenêtre sous le point (x, y) de `notches` crans de molette.
 pub fn scroll_wheel(x: i32, y: i32, notches: i32) {
     use windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEEVENTF_WHEEL, MOUSEINPUT, MOUSE_EVENT_FLAGS};

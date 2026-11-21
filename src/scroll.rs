@@ -180,16 +180,28 @@ pub fn capture_settled(r: Rect) -> anyhow::Result<RgbaImage> {
 }
 
 /// Capture défilante de la zone `r` (bloquante : à lancer dans un thread).
-pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
-    let mut auto = crate::platform::can_simulate_scroll();
+/// `held` : zone dessinée en tournant la molette, bouton gauche maintenu. L'utilisateur fait
+/// défiler lui-même la page ; la capture se termine quand il relâche le bouton. `first_notches` :
+/// crans déjà tournés pendant la sélection, transmis à la page. `first` : la zone telle que
+/// l'utilisateur la voyait en la dessinant (point de départ de l'image).
+pub fn run(r: Rect, progress: Progress, held: bool, first_notches: i32, first: Option<RgbaImage>) -> anyhow::Result<RgbaImage> {
+    let mut auto = !held && crate::platform::can_simulate_scroll();
     progress.manual.store(!auto, Ordering::SeqCst);
     let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
     let cursor_before = capture::cursor_pos();
     crate::diag::log(&format!("capture défilante {r:?} (molette simulée : {auto})"));
     // Laisser disparaître la sélection.
-    std::thread::sleep(Duration::from_millis(250));
-    let mut stitch = Stitcher::new(capture_settled(r)?);
+    std::thread::sleep(Duration::from_millis(if held { 120 } else { 250 }));
+    let first = match first.filter(|f| f.width() == r.w as u32 && f.height() == r.h as u32) {
+        Some(f) => f,
+        None => capture_settled(r)?,
+    };
+    let mut stitch = Stitcher::new(first);
     progress.height.store(stitch.height(), Ordering::SeqCst);
+    if held && first_notches > 0 {
+        // Crans reçus par la sélection avant sa fermeture : à la page, sous le pointeur.
+        crate::platform::send_wheel(first_notches);
+    }
     let started = Instant::now();
     let mut notches: i32 = 2;
     let (mut still, mut lost) = (0, 0);
@@ -199,6 +211,8 @@ pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
         progress.manual.store(true, Ordering::SeqCst);
     };
     while !progress.stop.load(Ordering::SeqCst) && started.elapsed() < MAX_DURATION && stitch.height() < MAX_HEIGHT {
+        // Bouton relâché : dernière image, puis fin.
+        let released = held && !crate::platform::left_button_down();
         if auto {
             // Pointeur déplacé depuis la dernière molette simulée : la souris est dans la main.
             let (x, y) = capture::cursor_pos();
@@ -213,8 +227,12 @@ pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
             capture_settled(r)?
         } else {
             // À la main : images rapprochées pour garder un recouvrement entre deux crans.
-            std::thread::sleep(Duration::from_millis(70));
-            capture::capture_rect(r, false)?
+            std::thread::sleep(Duration::from_millis(if held { 40 } else { 70 }));
+            if released {
+                capture_settled(r)?
+            } else {
+                capture::capture_rect(r, false)?
+            }
         };
         match stitch.push(cur) {
             Some(Shift { rows: 0, .. }) => {
@@ -244,6 +262,9 @@ pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
                     }
                 }
             }
+        }
+        if released {
+            break;
         }
     }
     if !progress.manual.load(Ordering::SeqCst) {
@@ -346,7 +367,7 @@ mod tests {
         std::thread::sleep(Duration::from_millis(1500));
         let v: Vec<i32> = std::fs::read_to_string(&rect_file).unwrap().split_whitespace().map(|x| x.parse().unwrap()).collect();
         let r = Rect::new(v[0], v[1], v[2], v[3]);
-        let res = run(r, Progress::default());
+        let res = run(r, Progress::default(), false, 0, None);
         let _ = child.kill();
         let img = res.unwrap();
         img.save(&out).unwrap();
@@ -373,30 +394,11 @@ mod tests {
                 stop.store(true, Ordering::SeqCst);
             });
         }
-        let img = run(r, progress.clone()).unwrap();
+        let held = std::env::var_os("SC_SCROLL_HELD").is_some();
+        let img = run(r, progress.clone(), held, 0, None).unwrap();
         eprintln!("A LA MAIN : {}", progress.manual.load(Ordering::SeqCst));
         img.save(std::env::var("SC_SCROLL_OUT").unwrap()).unwrap();
         eprintln!("RESULTAT {}x{} pour {}x{}", img.width(), img.height(), r.w, r.h);
     }
 
-    /// Essai réel : molette postée à la fenêtre sous le point `SC_WHEEL_AT` (« x y »).
-    #[test]
-    #[ignore]
-    fn molette_postee() {
-        #[cfg(windows)]
-        unsafe {
-            use windows::Win32::UI::HiDpi::{SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2};
-            let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-        }
-        let v: Vec<i32> = std::env::var("SC_WHEEL_AT").unwrap().split_whitespace().map(|x| x.parse().unwrap()).collect();
-        let r = Rect::new(v[0] - 200, v[1] - 200, 400, 400);
-        let before = capture::capture_rect(r, false).unwrap();
-        let target = capture::wheel_target(v[0], v[1]).expect("fenêtre sous le point");
-        capture::post_wheel(target, v[0], v[1], 3);
-        std::thread::sleep(Duration::from_millis(600));
-        let after = capture::capture_rect(r, false).unwrap();
-        let shift = find_shift(&before, &after);
-        eprintln!("CIBLE {target:#x} DECALAGE {shift:?}");
-        assert!(shift.is_some_and(|s| s.rows > 0));
-    }
 }

@@ -383,3 +383,15 @@ pub fn scroll_wheel(x: i32, y: i32, notches: i32) {
         std::thread::sleep(std::time::Duration::from_millis(15));
     }
 }
+
+/// Bouton gauche de la souris enfoncé.
+pub fn left_button_down() -> bool {
+    extern "C" {
+        fn CGEventSourceButtonState(state: i32, button: u32) -> bool;
+    }
+    // kCGEventSourceStateCombinedSessionState = 0, kCGMouseButtonLeft = 0.
+    unsafe { CGEventSourceButtonState(0, 0) }
+}
+
+/// Crans de molette vers le bas, là où se trouve le pointeur (macOS : non utilisé).
+pub fn send_wheel(_notches: i32) {}
