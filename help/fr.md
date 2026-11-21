@@ -38,6 +38,7 @@ La capture peut aussi être copiée automatiquement dans le presse-papiers et en
 Pour capturer une page plus haute que l'écran (page web, document…) : carte **Défilement** de l'accueil, ou menu de la zone de notification.
 - Sélectionner la zone qui défile, de préférence sans la barre de défilement.
 - La page défile toute seule vers le bas et les images sont assemblées ; la capture s'arrête en bas de la page, ou avec **Terminer** / `Échap`.
+- Pour faire défiler vous-même, bougez la souris : le défilement automatique s'arrête et l'assemblage suit votre molette (sans aller trop vite), jusqu'à **Terminer**.
 - Les en-têtes et pieds de page fixes ne sont gardés qu'une fois.
 > Sur Mac, le défilement automatique demande l'autorisation **Accessibilité** (Réglages Système > Confidentialité et sécurité). Sans elle, faites défiler vous-même la page avec la molette ou le pavé tactile, puis **Terminer**.
 

@@ -120,11 +120,13 @@ pub struct Stitcher {
     width: u32,
     rows: Vec<u8>,
     prev: RgbaImage,
+    /// Images reçues après la première.
+    pushes: usize,
 }
 
 impl Stitcher {
     pub fn new(first: RgbaImage) -> Self {
-        Self { width: first.width(), rows: first.as_raw().clone(), prev: first }
+        Self { width: first.width(), rows: first.as_raw().clone(), prev: first, pushes: 0 }
     }
 
     pub fn height(&self) -> u32 {
@@ -133,6 +135,7 @@ impl Stitcher {
 
     /// Ajoute une nouvelle image. Renvoie le recalage trouvé (`None` : image écartée).
     pub fn push(&mut self, cur: RgbaImage) -> Option<Shift> {
+        self.pushes += 1;
         let shift = find_shift(&self.prev, &cur)?;
         if shift.rows > 0 {
             let stride = self.width as usize * 4;
@@ -158,6 +161,8 @@ impl Stitcher {
 pub struct Progress {
     pub stop: Arc<AtomicBool>,
     pub height: Arc<AtomicU32>,
+    /// L'utilisateur fait défiler lui-même (molette simulée arrêtée, ou impossible sur ce Mac).
+    pub manual: Arc<AtomicBool>,
 }
 
 /// Capture qui ne change plus (la page a fini de défiler) : deux images identiques de suite.
@@ -176,7 +181,8 @@ fn capture_settled(r: Rect) -> anyhow::Result<RgbaImage> {
 
 /// Capture défilante de la zone `r` (bloquante : à lancer dans un thread).
 pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
-    let auto = crate::platform::can_simulate_scroll();
+    let mut auto = crate::platform::can_simulate_scroll();
+    progress.manual.store(!auto, Ordering::SeqCst);
     let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
     let cursor_before = capture::cursor_pos();
     crate::diag::log(&format!("capture défilante {r:?} (molette simulée : {auto})"));
@@ -187,14 +193,29 @@ pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
     let started = Instant::now();
     let mut notches: i32 = 2;
     let (mut still, mut lost) = (0, 0);
+    // L'utilisateur reprend la main : la molette simulée s'arrête et l'assemblage suit son défilement.
+    let take_over = |why: &str| {
+        crate::diag::log(&format!("capture défilante : défilement à la main ({why})"));
+        progress.manual.store(true, Ordering::SeqCst);
+    };
     while !progress.stop.load(Ordering::SeqCst) && started.elapsed() < MAX_DURATION && stitch.height() < MAX_HEIGHT {
         if auto {
+            // Pointeur déplacé depuis la dernière molette simulée : la souris est dans la main.
+            let (x, y) = capture::cursor_pos();
+            if notches_sent(&stitch) && ((x - cx).abs() > 3 || (y - cy).abs() > 3) {
+                auto = false;
+                take_over("souris déplacée");
+            }
+        }
+        let cur = if auto {
             crate::platform::scroll_wheel(cx, cy, notches);
             std::thread::sleep(Duration::from_millis(250));
+            capture_settled(r)?
         } else {
-            std::thread::sleep(Duration::from_millis(150));
-        }
-        let cur = capture_settled(r)?;
+            // À la main : images rapprochées pour garder un recouvrement entre deux crans.
+            std::thread::sleep(Duration::from_millis(70));
+            capture::capture_rect(r, false)?
+        };
         match stitch.push(cur) {
             Some(Shift { rows: 0, .. }) => {
                 // Bas de la page atteint (rien ne bouge malgré la molette).
@@ -212,23 +233,31 @@ pub fn run(r: Rect, progress: Progress) -> anyhow::Result<RgbaImage> {
                 progress.height.store(stitch.height(), Ordering::SeqCst);
             }
             None => {
-                // Contenu qui change tout seul (animation) ou défilement trop grand.
+                // Contenu qui change tout seul (animation), défilement trop grand, ou molette
+                // tournée par l'utilisateur en même temps : on passe à la main plutôt que d'arrêter.
                 lost += 1;
                 if auto {
                     notches = (notches / 2).max(1);
-                    if lost >= 3 {
-                        break;
+                    if lost >= 2 {
+                        auto = false;
+                        take_over("recalage perdu");
                     }
                 }
             }
         }
     }
-    if auto {
+    if !progress.manual.load(Ordering::SeqCst) {
         crate::platform::move_cursor(cursor_before.0, cursor_before.1);
     }
     let img = stitch.finish();
     crate::diag::log(&format!("capture défilante terminée : {}×{}", img.width(), img.height()));
     Ok(img)
+}
+
+/// Une molette simulée a déjà placé le pointeur au centre de la zone (le premier tour ne compte
+/// pas : le pointeur est encore là où l'utilisateur a cliqué).
+fn notches_sent(stitch: &Stitcher) -> bool {
+    stitch.pushes > 0
 }
 
 #[cfg(test)]
@@ -322,5 +351,31 @@ mod tests {
         let img = res.unwrap();
         img.save(&out).unwrap();
         assert!(img.height() > r.h as u32 * 3, "{}×{} pour une zone de {}×{}", img.width(), img.height(), r.w, r.h);
+    }
+
+    /// Essai réel sur une zone donnée (`SC_SCROLL_RECT` = « x y l h », pixels physiques) : page
+    /// d'un navigateur ouverte par le script d'essai. `SC_SCROLL_OUT` : image assemblée.
+    #[test]
+    #[ignore]
+    fn zone_reelle() {
+        #[cfg(windows)]
+        unsafe {
+            use windows::Win32::UI::HiDpi::{SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2};
+            let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+        let v: Vec<i32> = std::env::var("SC_SCROLL_RECT").unwrap().split_whitespace().map(|x| x.parse().unwrap()).collect();
+        let r = Rect::new(v[0], v[1], v[2], v[3]);
+        let progress = Progress::default();
+        if let Some(secs) = std::env::var("SC_SCROLL_STOP_AFTER").ok().and_then(|v| v.parse::<u64>().ok()) {
+            let stop = progress.stop.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_secs(secs));
+                stop.store(true, Ordering::SeqCst);
+            });
+        }
+        let img = run(r, progress.clone()).unwrap();
+        eprintln!("A LA MAIN : {}", progress.manual.load(Ordering::SeqCst));
+        img.save(std::env::var("SC_SCROLL_OUT").unwrap()).unwrap();
+        eprintln!("RESULTAT {}x{} pour {}x{}", img.width(), img.height(), r.w, r.h);
     }
 }

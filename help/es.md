@@ -38,6 +38,7 @@ La captura también puede copiarse automáticamente al portapapeles y guardarse 
 Para capturar una página más alta que la pantalla (página web, documento…): tarjeta **Desplazamiento** de la página de inicio, o menú del área de notificación.
 - Seleccionar la zona que se desplaza, preferiblemente sin la barra de desplazamiento.
 - La página se desplaza sola hacia abajo y las imágenes se unen; la captura se detiene al final de la página, o con **Terminar** / `Esc`.
+- Para desplazar usted mismo, mueva el ratón: el desplazamiento automático se detiene y la unión sigue su rueda (sin ir demasiado rápido), hasta **Terminar**.
 - Los encabezados y pies de página fijos solo se conservan una vez.
 > En Mac, el desplazamiento automático necesita el permiso **Accesibilidad** (Ajustes del Sistema > Privacidad y seguridad). Sin él, desplace usted mismo la página con la rueda o el trackpad y luego **Terminar**.
 

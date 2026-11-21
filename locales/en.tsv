@@ -404,9 +404,7 @@ Sans elle, les captures et les vidéos sont noires. Dans Réglages Système > Co
 Arrondie	Rounded
 Capture avec défilement : {0} px	Scrolling capture: {0} px
 Capture avec défilement	Scrolling capture
-Défilement automatique • Échap pour arrêter	Automatic scrolling • Esc to stop
 Défilement	Scrolling
-Faites défiler la page vers le bas, puis Terminer	Scroll the page down, then Finish
 Glisser la poignée de la pointe pour l'orienter ou l'allonger.	Drag the tail handle to point or lengthen it.
 Glisser pour tracer • Défiler ou clic droit maintenu : déplacer • ⌘+défiler ou pincer : zoom	Drag to draw • Scroll or hold right-click: pan • ⌘+scroll or pinch: zoom
 Glisser pour tracer • Molette ou clic droit maintenu : déplacer • Ctrl+molette : zoom	Drag to draw • Wheel or hold right-click: pan • Ctrl+wheel: zoom
@@ -422,3 +420,5 @@ ScreenCapture démarre dans la zone de notification	ScreenCapture starts in the 
 Sélectionnez la zone qui défile (sans la barre de défilement)  •  Clic : fenêtre  •  Échap : annuler	Select the scrolling area (without the scrollbar)  •  Click: window  •  Esc: cancel
 Terminer	Finish
 Type de bulle	Bubble type
+Défilement automatique • Bouger la souris pour défiler vous-même • Échap pour arrêter	Automatic scrolling • Move the mouse to scroll yourself • Esc to stop
+Faites défiler la page vers le bas, sans aller trop vite, puis Terminer	Scroll the page down, not too fast, then Finish

@@ -2364,12 +2364,12 @@ impl App {
         // La capture défilante peut durer : ne pas la considérer comme bloquée.
         self.busy_since = Instant::now();
         let rect = self.scrollbar_rect;
-        let auto = platform::can_simulate_scroll();
         ctx.show_viewport_immediate(egui::ViewportId::from_hash_of("sc_scrollbar"), floating_builder(TITLE_SCROLLBAR, rect), |vctx, _| {
             self.scrollbar_win.sync(TITLE_SCROLLBAR, rect, false, true, true);
             let p = palette(vctx);
             let Some(progress) = self.scrolling.clone() else { return };
             let height = progress.height.load(std::sync::atomic::Ordering::SeqCst);
+            let auto = !progress.manual.load(std::sync::atomic::Ordering::SeqCst);
             egui::CentralPanel::default()
                 .frame(egui::Frame::new().fill(p.surface_high).inner_margin(Margin::symmetric(14, 8)))
                 .show(vctx, |ui| {
@@ -2378,9 +2378,9 @@ impl App {
                         ui.vertical(|ui| {
                             ui.label(egui::RichText::new(crate::i18n::trf("Capture avec défilement : {0} px", &[&height])).font(theme::medium(14.0)).color(p.on_surface));
                             let hint = if auto {
-                                crate::i18n::tr("Défilement automatique • Échap pour arrêter")
+                                crate::i18n::tr("Défilement automatique • Bouger la souris pour défiler vous-même • Échap pour arrêter")
                             } else {
-                                crate::i18n::tr("Faites défiler la page vers le bas, puis Terminer")
+                                crate::i18n::tr("Faites défiler la page vers le bas, sans aller trop vite, puis Terminer")
                             };
                             ui.label(egui::RichText::new(hint).size(12.0).color(p.on_surface_variant));
                         });

@@ -38,6 +38,7 @@ Die Aufnahme kann außerdem automatisch in die Zwischenablage kopiert und im Auf
 Um eine Seite aufzunehmen, die höher als der Bildschirm ist (Webseite, Dokument…): Karte **Scrollen** auf der Startseite oder Menü im Infobereich.
 - Den scrollenden Bereich wählen, möglichst ohne Bildlaufleiste.
 - Die Seite scrollt von selbst nach unten und die Bilder werden zusammengesetzt; die Aufnahme endet am Seitenende oder mit **Fertig** / `Esc`.
+- Um selbst zu scrollen, die Maus bewegen: Das automatische Scrollen stoppt und das Zusammensetzen folgt Ihrem Mausrad (nicht zu schnell), bis **Fertig**.
 - Feste Kopf- und Fußzeilen werden nur einmal übernommen.
 > Auf dem Mac braucht das automatische Scrollen die Berechtigung **Bedienungshilfen** (Systemeinstellungen > Datenschutz & Sicherheit). Ohne sie die Seite selbst mit Mausrad oder Trackpad scrollen, dann **Fertig**.
 

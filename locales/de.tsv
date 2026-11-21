@@ -404,9 +404,7 @@ Sans elle, les captures et les vidéos sont noires. Dans Réglages Système > Co
 Arrondie	Abgerundet
 Capture avec défilement : {0} px	Scroll-Aufnahme: {0} px
 Capture avec défilement	Scroll-Aufnahme
-Défilement automatique • Échap pour arrêter	Automatisches Scrollen • Esc zum Beenden
 Défilement	Scrollen
-Faites défiler la page vers le bas, puis Terminer	Seite nach unten scrollen, dann Fertig
 Glisser la poignée de la pointe pour l'orienter ou l'allonger.	Den Griff der Spitze ziehen, um sie auszurichten oder zu verlängern.
 Glisser pour tracer • Défiler ou clic droit maintenu : déplacer • ⌘+défiler ou pincer : zoom	Ziehen zum Zeichnen • Scrollen oder Rechtsklick halten: verschieben • ⌘+Scrollen oder Zusammenziehen: Zoom
 Glisser pour tracer • Molette ou clic droit maintenu : déplacer • Ctrl+molette : zoom	Ziehen zum Zeichnen • Mausrad oder Rechtsklick halten: verschieben • Strg+Mausrad: Zoom
@@ -422,3 +420,5 @@ ScreenCapture démarre dans la zone de notification	ScreenCapture startet im Inf
 Sélectionnez la zone qui défile (sans la barre de défilement)  •  Clic : fenêtre  •  Échap : annuler	Den scrollenden Bereich wählen (ohne Bildlaufleiste)  •  Klick: Fenster  •  Esc: abbrechen
 Terminer	Fertig
 Type de bulle	Blasentyp
+Défilement automatique • Bouger la souris pour défiler vous-même • Échap pour arrêter	Automatisches Scrollen • Maus bewegen, um selbst zu scrollen • Esc zum Beenden
+Faites défiler la page vers le bas, sans aller trop vite, puis Terminer	Seite nicht zu schnell nach unten scrollen, dann Fertig

@@ -38,6 +38,7 @@ The capture can also be copied to the clipboard automatically and saved to the c
 To capture a page taller than the screen (web page, document…): **Scrolling** card on the home page, or the notification area menu.
 - Select the area that scrolls, preferably without the scrollbar.
 - The page scrolls down by itself and the images are stitched together; the capture stops at the bottom of the page, or with **Finish** / `Esc`.
+- To scroll yourself, move the mouse: automatic scrolling stops and the stitching follows your wheel (not too fast), until **Finish**.
 - Fixed headers and footers are kept only once.
 > On Mac, automatic scrolling needs the **Accessibility** permission (System Settings > Privacy & Security). Without it, scroll the page yourself with the wheel or trackpad, then **Finish**.
 
